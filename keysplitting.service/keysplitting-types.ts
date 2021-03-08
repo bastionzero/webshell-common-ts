@@ -39,6 +39,11 @@ export interface DataAckPayload extends KeySplittingPayload {
     TargetPublicKey: string
 }
 
+export interface ErrorPayload {
+    hPointer: string;
+    message: string;
+}
+
 export interface DataAckMessage extends KeySplittingMessage<DataAckPayload> { }
 
 export interface SynMessage extends KeySplittingMessage<SynMessagePayload> { }
@@ -46,6 +51,8 @@ export interface SynMessage extends KeySplittingMessage<SynMessagePayload> { }
 export interface SynAckMessage extends KeySplittingMessage<SynAckPayload> { }
 
 export interface DataMessage extends KeySplittingMessage<DataMessagePayload> { }
+
+export interface ErrorPayload extends KeySplittingMessage<ErrorPayload> { }
 
 export interface SynMessageWrapper {
     SynPayload: SynMessage
@@ -61,4 +68,8 @@ export interface DataAckMessageWrapper {
 
 export interface SynAckMessageWrapper {
     SynAckPayload: SynAckMessage
+}
+
+export interface ErrorMessageWrapper {
+    errorPayload: ErrorPayload;
 }
