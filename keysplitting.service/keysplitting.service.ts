@@ -1,5 +1,5 @@
 import { SHA3 } from 'sha3';
-import * as secp from "noble-secp256k1";
+import * as secp from 'noble-secp256k1';
 const crypto = require('crypto');
 const atob = require('atob');
 
@@ -35,7 +35,7 @@ export class KeySplittingService {
 
     public async getBZECert(currentIdToken: string): Promise<BZECert> {
         if (this.data.initialIdToken == undefined || this.data.publicKey == undefined || this.data.cerRand == undefined || this.data.cerRandSig == undefined)
-            throw new Error("Undefined values in BZECert!");
+            throw new Error('Undefined values in BZECert!');
         return {
             InitialIdToken: this.data.initialIdToken,
             CurrentIdToken: currentIdToken,
@@ -67,7 +67,7 @@ export class KeySplittingService {
     public createNonce() {
         // Helper function to create a Nonce 
         const hashClient = new SHA3(256);
-        const hashString = "".concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        const hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
 
         // Update and return
         hashClient.update(hashString);

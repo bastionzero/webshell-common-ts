@@ -44,7 +44,7 @@ export class WebsocketStream implements IDisposable
         resizeStream: BehaviorSubject<TerminalSize>
     )
     {
-        this.outputSubject = new BehaviorSubject<string>("");
+        this.outputSubject = new BehaviorSubject<string>('');
         this.outputData = this.outputSubject.asObservable();
         this.shellStateSubject = new BehaviorSubject<ShellState>({start: false, disconnect: false, delete: false, ready: false});
         this.shellStateData = this.shellStateSubject.asObservable();
