@@ -2,11 +2,7 @@ import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
 import { ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState } from './websocket.service.types';
 
-export interface AuthConfigService {
-    getServiceUrl: () => string;
-    getSessionId: () => string;
-    getIdToken: () => Promise<string>;
-}
+import { AuthConfigService } from '../auth-config-service/auth-config.service';
 
 // ref: https://gist.github.com/dsherret/cf5d6bec3d0f791cef00
 export interface IDisposable
