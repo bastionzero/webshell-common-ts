@@ -3,7 +3,7 @@ import * as secp from 'noble-secp256k1';
 const crypto = require('crypto');
 const atob = require('atob');
 
-import { ILogger } from '../logging/logging.types'
+import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
 import { BZECert } from './keysplitting-types';
 
@@ -42,7 +42,7 @@ export class KeySplittingService {
             ClientPublicKey: this.data.publicKey,
             Rand: this.data.cerRand,
             SignatureOnRand: this.data.cerRandSig
-        }
+        };
     }
 
     public async getBZECertHash(currentIdToken: string): Promise<string> {
@@ -52,7 +52,7 @@ export class KeySplittingService {
 
     public async generateCerRand() {
         // Helper function to generate and store our cerRand and cerRandSig
-        var cerRand = crypto.randomBytes(32)
+        var cerRand = crypto.randomBytes(32);
         this.data.cerRand = cerRand.toString('base64');
 
         var cerRandSig = await secp.sign(cerRand, this.privateKey);
@@ -102,7 +102,7 @@ export class KeySplittingService {
             if (Buffer.from(this.publicKey).toString('base64') != this.data.publicKey) {
                 throw new Error('Error loading keys, please check your key configuration');
             }
-            this.logger.debug('Loaded keysplitting keys')
+            this.logger.debug('Loaded keysplitting keys');
         }
     }
 
@@ -115,6 +115,6 @@ export class KeySplittingService {
         this.data.privateKey = Buffer.from(this.privateKey).toString('base64');
         this.data.publicKey = Buffer.from(this.publicKey).toString('base64');
         this.config.updateKeySplitting(this.data);
-        this.logger.debug('Generated keysplitting keys')
+        this.logger.debug('Generated keysplitting keys');
     }
 }

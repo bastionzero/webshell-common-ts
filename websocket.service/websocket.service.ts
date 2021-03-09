@@ -89,7 +89,7 @@ export class WebsocketStream implements IDisposable
         this.websocket.on(
             ShellHubIncomingMessages.shellStart,
             () => {
-                this.shellStateSubject.next({start: true, disconnect: false, delete: false, ready: false})
+                this.shellStateSubject.next({start: true, disconnect: false, delete: false, ready: false});
             }
         );
 
