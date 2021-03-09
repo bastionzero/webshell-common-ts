@@ -75,3 +75,10 @@ export interface SynAckMessageWrapper {
 export interface ErrorMessageWrapper {
     errorPayload: ErrorMessage;
 }
+
+export enum KeysplittingErrorTypes {
+    BZECertIDTokenValidationError = "BZECertIDTokenValidationError",
+	BZECertInvalidNonce = "BZECertInvalidNonce",
+	BZECertUnverifiedEmail = "BZECertUnverifiedEmail",
+	BZECertInvalidHash  = "BZECertInvalidHash",
+}
