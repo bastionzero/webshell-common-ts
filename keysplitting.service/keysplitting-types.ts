@@ -42,6 +42,8 @@ export interface DataAckPayload extends KeySplittingPayload {
 export interface ErrorPayload {
     hPointer: string;
     message: string;
+    targetPublicKey: string;
+    errorType: string;
 }
 
 export interface DataAckMessage extends KeySplittingMessage<DataAckPayload> { }
@@ -52,7 +54,7 @@ export interface SynAckMessage extends KeySplittingMessage<SynAckPayload> { }
 
 export interface DataMessage extends KeySplittingMessage<DataMessagePayload> { }
 
-export interface ErrorPayload extends KeySplittingMessage<ErrorPayload> { }
+export interface ErrorMessage extends KeySplittingMessage<ErrorPayload> { }
 
 export interface SynMessageWrapper {
     synPayload: SynMessage
@@ -66,10 +68,17 @@ export interface DataAckMessageWrapper {
     dataAckPayload: DataAckMessage
 }
 
-export interface ErrorMessageWrapper {
-    errorPayload: ErrorPayload;
-}
-
 export interface SynAckMessageWrapper {
     synAckPayload: SynAckMessage
+}
+
+export interface ErrorMessageWrapper {
+    errorPayload: ErrorMessage;
+}
+
+export enum KeysplittingErrorTypes {
+    BZECertIDTokenValidationError = 'BZECertIDTokenValidationError',
+	BZECertInvalidNonce = 'BZECertInvalidNonce',
+	BZECertUnverifiedEmail = 'BZECertUnverifiedEmail',
+	BZECertInvalidHash  = 'BZECertInvalidHash',
 }
