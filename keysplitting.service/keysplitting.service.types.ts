@@ -1,6 +1,6 @@
 export interface KeySplittingConfigSchema {
     initialIdToken: string,
-    cerRand: string, 
+    cerRand: string,
     cerRandSig: string,
     privateKey: string,
     publicKey: string

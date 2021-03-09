@@ -18,7 +18,7 @@ export class KeySplittingService {
         this.config = config;
         this.logger = logger;
         this.data = this.config.loadKeySplitting();
-        
+
         // Load our keys if they are there
         this.loadKeys();
     }
@@ -65,7 +65,7 @@ export class KeySplittingService {
 
 
     public createNonce() {
-        // Helper function to create a Nonce 
+        // Helper function to create a Nonce
         const hashClient = new SHA3(256);
         const hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
 
@@ -94,7 +94,7 @@ export class KeySplittingService {
     private loadKeys() {
         // Helper function to check if keys are undefined and, generate new ones
         if (this.data.privateKey != undefined) {
-            // We need to load in our keys 
+            // We need to load in our keys
             this.privateKey = Buffer.from(this.data.privateKey, 'base64');
             this.publicKey = secp.getPublicKey(this.privateKey);
 

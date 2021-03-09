@@ -27,14 +27,14 @@ export class WebsocketStream implements IDisposable
     private websocket : HubConnection;
 
     // stdout
-    private outputSubject: BehaviorSubject<string>; 
+    private outputSubject: BehaviorSubject<string>;
     public outputData: Observable<string>;
     // stdin
     private inputSubscription: Subscription;
     private resizeSubscription: Subscription;
 
     // shell state
-    private shellStateSubject: BehaviorSubject<ShellState>; 
+    private shellStateSubject: BehaviorSubject<ShellState>;
     public shellStateData: Observable<ShellState>;
 
     constructor(
