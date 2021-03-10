@@ -123,7 +123,7 @@ export class KeySplittingService {
             payload: {
                 type: 'DATA',
                 action: action,
-                hPointer: this.expectedHPointer,
+                hPointer: this.currentHPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
                 payload: 'payload'
@@ -165,7 +165,7 @@ export class KeySplittingService {
     }
 
     private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
-        return await this.signHelper(this.JSONstringifyOrder(messagePayload.payload));
+        return await this.signHelper(Buffer.from(this.JSONstringifyOrder(messagePayload.payload), 'utf-8').toString('hex'));
     }
 
     private hashHelper(toHash: string) {

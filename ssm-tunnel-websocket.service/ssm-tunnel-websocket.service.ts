@@ -169,9 +169,6 @@ export class SsmTunnelWebsocketService
                     throw new Error(errorString);
                 }
 
-                // Update the expected HPointer
-                this.keySplittingService.setExpectedHPointer(synAckMessage.synAckPayload.payload);
-
                 this.sendOpenShellDataMessage();
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
