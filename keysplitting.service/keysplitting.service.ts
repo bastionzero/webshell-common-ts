@@ -5,7 +5,7 @@ const atob = require('atob');
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
-import { BZECert, SynMessagePayload, DataMessagePayload, SynMessage, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage } from './keysplitting-types';
+import { BZECert, SynMessagePayload, DataMessagePayload, SynMessage, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, DataAckMessage } from './keysplitting-types';
 
 export class KeySplittingService {
     private config: ConfigInterface
@@ -89,14 +89,9 @@ export class KeySplittingService {
         this.logger.debug('Reset keysplitting service');
     }
 
-    public async setExpectedHPointerSyn(synMessage: SynMessagePayload) {
-        // Helper function to save our syn hash
-        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(synMessage));
-    }
-
-    public async setExpectedHPointerData(dataMessage: DataMessagePayload) {
+    public setExpectedHPointer(message: any) {
         // Helper function to save our data hash
-        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(dataMessage));
+        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
     public validateHPointer(hPointer: string) {
@@ -128,7 +123,7 @@ export class KeySplittingService {
             payload: {
                 type: 'DATA',
                 action: action,
-                hPointer: 'placeholder',
+                hPointer: this.expectedHPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
                 payload: 'payload'
