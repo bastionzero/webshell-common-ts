@@ -90,16 +90,18 @@ export class KeySplittingService {
     }
 
     public setExpectedHPointer(message: any) {
-        // Helper function to save our data hash
+        // Helper function to set our expected HPointer
         this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(message));
+    }
+
+    public setCurrentHPointer(message: any) {
+        // Helper function to set our current HPointer
+        this.currentHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
     public validateHPointer(hPointer: string) {
         if (this.expectedHPointer != null)
             if (this.expectedHPointer == hPointer) {
-                // Update the current HPointer
-                this.currentHPointer = this.expectedHPointer;
-
                 // Return True
                 return true;
             } else {
