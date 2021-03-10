@@ -134,7 +134,7 @@ export class KeySplittingService {
                 payload: 'payload'
             },
             signature: ''
-        }
+        };
 
         // Then calculate our signature
         let signature = await this.signMessagePayload<DataMessagePayload>(dataMessage);
@@ -147,7 +147,7 @@ export class KeySplittingService {
     }
 
     public async buildSynMessage(targetId: string, action: string, currentIdToken: string): Promise<SynMessageWrapper> {
-        // Build our payload 
+        // Build our payload
         let synMessage = {
             payload: {
                 type: 'SYN',
@@ -157,7 +157,7 @@ export class KeySplittingService {
                 BZECert: await this.getBZECert(currentIdToken)
             },
             signature: ''
-        }
+        };
 
         // Then calculate our signature
         let signature = await this.signMessagePayload<SynMessagePayload>(synMessage);
