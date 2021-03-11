@@ -169,6 +169,9 @@ export class SsmTunnelWebsocketService
                     throw new Error(errorString);
                 }
 
+                // Update Current HPointer
+                this.keySplittingService.setCurrentHPointer(synAckMessage.synAckPayload.payload);
+
                 this.sendOpenShellDataMessage();
             } catch (e) {
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
@@ -184,6 +187,9 @@ export class SsmTunnelWebsocketService
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
+
+                // Update the expected HPointer
+                this.keySplittingService.setCurrentHPointer(dataAckMessage.dataAckPayload.payload);
 
             } catch (e) {
                 this.logger.error(`Error in ReceiveDataAck: ${e}`);
@@ -262,7 +268,7 @@ export class SsmTunnelWebsocketService
 
     private async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug('Sending syn message...');
-        await this.keySplittingService.setExpectedHPointerSyn(synMessage.synPayload.payload);
+        this.keySplittingService.setExpectedHPointer(synMessage.synPayload.payload);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
@@ -271,7 +277,7 @@ export class SsmTunnelWebsocketService
 
     private async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
         this.logger.debug('Sending data message...');
-        await this.keySplittingService.setExpectedHPointerData(dataMessage.dataPayload.payload);
+        this.keySplittingService.setExpectedHPointer(dataMessage.dataPayload.payload);
         await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage

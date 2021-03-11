@@ -5,7 +5,7 @@ const atob = require('atob');
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
-import { BZECert, SynMessagePayload, DataMessagePayload, SynMessage, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage } from './keysplitting-types';
+import { BZECert, SynMessagePayload, DataMessagePayload, SynMessage, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, DataAckMessage } from './keysplitting-types';
 
 export class KeySplittingService {
     private config: ConfigInterface
@@ -89,22 +89,19 @@ export class KeySplittingService {
         this.logger.debug('Reset keysplitting service');
     }
 
-    public async setExpectedHPointerSyn(synMessage: SynMessagePayload) {
-        // Helper function to save our syn hash
-        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(synMessage));
+    public setExpectedHPointer(message: any) {
+        // Helper function to set our expected HPointer
+        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
-    public async setExpectedHPointerData(dataMessage: DataMessagePayload) {
-        // Helper function to save our data hash
-        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(dataMessage));
+    public setCurrentHPointer(message: any) {
+        // Helper function to set our current HPointer
+        this.currentHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
     public validateHPointer(hPointer: string) {
         if (this.expectedHPointer != null)
             if (this.expectedHPointer == hPointer) {
-                // Update the current HPointer
-                this.currentHPointer = this.expectedHPointer;
-
                 // Return True
                 return true;
             } else {
@@ -128,7 +125,7 @@ export class KeySplittingService {
             payload: {
                 type: 'DATA',
                 action: action,
-                hPointer: 'placeholder',
+                hPointer: this.currentHPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
                 payload: 'payload'
@@ -170,7 +167,7 @@ export class KeySplittingService {
     }
 
     private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
-        return await this.signHelper(this.JSONstringifyOrder(messagePayload.payload));
+        return await this.signHelper(Buffer.from(this.JSONstringifyOrder(messagePayload.payload), 'utf-8').toString('hex'));
     }
 
     private hashHelper(toHash: string) {
