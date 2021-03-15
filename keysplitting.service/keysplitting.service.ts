@@ -185,11 +185,11 @@ export class KeySplittingService {
         // Helper function to check if keys are undefined and load them in
         if (this.data.privateKey != undefined) {
             // We need to load in our keys
-            this.privateKey = Buffer.from(this.data.privateKey, 'base64');
+            this.privateKey = Buffer.from(this.data.privateKey, 'hex');
             this.publicKey = secp.getPublicKey(this.privateKey);
 
             // Validate the public key
-            if (Buffer.from(this.publicKey).toString('base64') != this.data.publicKey) {
+            if (Buffer.from(this.publicKey).toString('hex') != this.data.publicKey) {
                 throw new Error('Error loading keys, please check your key configuration');
             }
             this.logger.debug('Loaded keysplitting keys');
@@ -202,8 +202,8 @@ export class KeySplittingService {
         this.publicKey = secp.getPublicKey(this.privateKey);
 
         // Update our config
-        this.data.privateKey = Buffer.from(this.privateKey).toString('base64');
-        this.data.publicKey = Buffer.from(this.publicKey).toString('base64');
+        this.data.privateKey = Buffer.from(this.privateKey).toString('hex');
+        this.data.publicKey = Buffer.from(this.publicKey).toString('hex');
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated keysplitting keys');
     }
