@@ -43,7 +43,7 @@ export class KeySplittingService {
 
     public async getBZECert(currentIdToken: string): Promise<BZECert> {
         if (this.data.initialIdToken == undefined || this.data.publicKey == undefined || this.data.cerRand == undefined || this.data.cerRandSig == undefined)
-            throw new Error('Undefined values in BZECert!');
+            throw new Error('Undefined values in BZECert! Ensure you are logged in (zli login --Google/Microsoft).');
         return {
             initialIdToken: this.data.initialIdToken,
             currentIdToken: currentIdToken,
@@ -73,13 +73,8 @@ export class KeySplittingService {
 
     public createNonce() {
         // Helper function to create a Nonce
-        const hashClient = new SHA3(256);
-        const hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
-
-        // Update and return
-        hashClient.update(hashString);
-
-        let nonce = hashClient.digest('base64');
+        let hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        let nonce = this.hashHelper(hashString);
         this.logger.debug(`Creating new nonce: ${nonce}`);
         return nonce;
     }
@@ -169,10 +164,11 @@ export class KeySplittingService {
     }
 
     private async signDataPayload(payload: DataMessagePayload) {
-        // When signing data message we have to sign the hash
-        let toSign = this.hashHelper(this.JSONstringifyOrder(payload), 'hex')
+        // When signing data message we have to sign the hash and sign the hex result of the hash
+        let toSign = this.hashHelper(this.JSONstringifyOrder(payload), 'hex');
         return await ed.sign(toSign, this.privateKey);
     }
+
     private async signSynMessage(payload: SynMessagePayload) {
         return await this.signHelper(this.JSONstringifyOrder(payload));
     }
@@ -193,11 +189,11 @@ export class KeySplittingService {
         // Helper function to check if keys are undefined and load them in
         if (this.data.privateKey != undefined) {
             // We need to load in our keys
-            this.privateKey = Buffer.from(this.data.privateKey, 'hex');
+            this.privateKey = Buffer.from(this.data.privateKey, 'base64');
             this.publicKey = await ed.getPublicKey(this.privateKey);
 
             // Validate the public key
-            if (Buffer.from(this.publicKey).toString('hex') != this.data.publicKey) {
+            if (Buffer.from(this.publicKey).toString('base64') != this.data.publicKey) {
                 throw new Error('Error loading keys, please check your key configuration');
             }
             this.logger.debug('Loaded keysplitting keys');
@@ -206,12 +202,12 @@ export class KeySplittingService {
 
     private async generateKeys() {
         // Create our keys
-        this.privateKey = ed.utils.randomPrivateKey(); 
+        this.privateKey = ed.utils.randomPrivateKey();
         this.publicKey = await ed.getPublicKey(this.privateKey);
 
         // Update our config
-        this.data.privateKey = Buffer.from(this.privateKey).toString('hex');
-        this.data.publicKey = Buffer.from(this.publicKey).toString('hex');
+        this.data.privateKey = Buffer.from(this.privateKey).toString('base64');
+        this.data.publicKey = Buffer.from(this.publicKey).toString('base64');
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated keysplitting keys');
     }
