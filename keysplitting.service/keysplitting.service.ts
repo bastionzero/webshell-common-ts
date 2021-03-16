@@ -1,5 +1,5 @@
 import { SHA3 } from 'sha3';
-import * as secp from 'noble-secp256k1';
+import * as ed from 'noble-ed25519';
 const crypto = require('crypto');
 
 import { ILogger } from '../logging/logging.types';
@@ -23,9 +23,12 @@ export class KeySplittingService {
         // Initially our expected HPointer is null
         this.expectedHPointer = null;
         this.currentHPointer = null;
+    }
 
+    public async init() {
+        // Init function so we can wait on async function calls
         // Load our keys if they are there
-        this.loadKeys();
+        await this.loadKeys();
     }
 
     public setInitialIdToken(latestIdToken: string) {
@@ -52,7 +55,7 @@ export class KeySplittingService {
 
     public async getBZECertHash(currentIdToken: string): Promise<string> {
         let BZECert = await this.getBZECert(currentIdToken);
-        return this.hashHelper(this.JSONstringifyOrder(BZECert));
+        return this.hashBufferHelper(Buffer.from(this.JSONstringifyOrder(BZECert), 'utf-8'));
     }
 
     public async generateCerRand() {
@@ -166,6 +169,7 @@ export class KeySplittingService {
     }
 
     private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
+        // this.logger.warn(`HASHING: ${this.JSONstringifyOrder(messagePayload.payload)}`);
         return await this.signHelper(Buffer.from(this.JSONstringifyOrder(messagePayload.payload), 'utf-8').toString('hex'));
     }
 
@@ -176,17 +180,24 @@ export class KeySplittingService {
         return hashClient.digest('base64');
     }
 
-    private async signHelper(toSign: string) {
-        // Helper function to sign a string for us
-        return await secp.sign(toSign, this.privateKey);
+    private hashBufferHelper(toHash: Buffer) {
+        // Helper function to hash a buffer for us
+        const hashClient = new SHA3(256);
+        hashClient.update(toHash);
+        return hashClient.digest('base64');
     }
 
-    private loadKeys() {
+    private async signHelper(toSign: string) {
+        // Helper function to sign a string for us
+        return await ed.sign(toSign, this.privateKey);
+    }
+
+    private async loadKeys() {
         // Helper function to check if keys are undefined and load them in
         if (this.data.privateKey != undefined) {
             // We need to load in our keys
             this.privateKey = Buffer.from(this.data.privateKey, 'hex');
-            this.publicKey = secp.getPublicKey(this.privateKey);
+            this.publicKey = await ed.getPublicKey(this.privateKey);
 
             // Validate the public key
             if (Buffer.from(this.publicKey).toString('hex') != this.data.publicKey) {
@@ -196,10 +207,10 @@ export class KeySplittingService {
         }
     }
 
-    private generateKeys() {
+    private async generateKeys() {
         // Create our keys
-        this.privateKey = crypto.randomBytes(32);
-        this.publicKey = secp.getPublicKey(this.privateKey);
+        this.privateKey = ed.utils.randomPrivateKey(); 
+        this.publicKey = await ed.getPublicKey(this.privateKey);
 
         // Update our config
         this.data.privateKey = Buffer.from(this.privateKey).toString('hex');
@@ -207,4 +218,32 @@ export class KeySplittingService {
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated keysplitting keys');
     }
+
+    // private arrayBufferToBase64(arrayBuffer: Uint8Array) {
+    //     var byteArray = new Uint8Array(arrayBuffer);
+    //     var byteString = '';
+    //     for(var i=0; i < byteArray.byteLength; i++) {
+    //         byteString += String.fromCharCode(byteArray[i]);
+    //     }
+    //     var b64 = Buffer.from(byteString).toString('base64');
+    
+    //     return b64;
+    // }
+    
+    // private addNewLines(str: string) {
+    //     var finalString = '';
+    //     while(str.length > 0) {
+    //         finalString += str.substring(0, 64) + '\n';
+    //         str = str.substring(64);
+    //     }
+    
+    //     return finalString;
+    // }
+    
+    // private toPem(privateKey: Uint8Array) {
+    //     var b64 = this.addNewLines(this.arrayBufferToBase64(privateKey));
+    //     var pem = "-----BEGIN PRIVATE KEY-----\n" + b64 + "-----END PRIVATE KEY-----";
+        
+    //     return pem;
+    // }
 }
