@@ -82,3 +82,8 @@ export enum KeysplittingErrorTypes {
 	BZECertUnverifiedEmail = 'BZECertUnverifiedEmail',
 	BZECertInvalidHash  = 'BZECertInvalidHash',
 }
+
+export interface SshOpenActionPayload {
+    username: string;
+    sshPubKey: string;
+}

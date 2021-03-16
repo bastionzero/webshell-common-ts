@@ -4,7 +4,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelTargetInfo, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -15,6 +15,8 @@ export class SsmTunnelWebsocketService
     private targetInfo: SsmTunnelTargetInfo;
     private websocket : HubConnection;
     private errorSubject: Subject<string> = new Subject<string>();
+    private username: string;
+    private sshPublicKey: SshPK.Key;
     public errors: Observable<string> = this.errorSubject.asObservable();
 
     constructor(
@@ -28,22 +30,32 @@ export class SsmTunnelWebsocketService
     }
 
     public async setupWebsocketTunnel(
-        userName: string,
+        username: string,
         port: number,
-        sshPublicKey: SshPK.Key
+        sshPublicKey: SshPK.Key,
+        keysplittingEnabled: boolean = true
     ) : Promise<boolean> {
         try {
+            this.username = username;
+            this.sshPublicKey = sshPublicKey;
+
             await this.setupWebsocket();
 
             await this.sendStartTunnelMessage({
                 targetId: this.targetInfo.id,
                 targetPort: port,
-                targetUser: userName
+                targetUser: username
             });
 
-            await this.sendPubKey(sshPublicKey);
-
-            await this.performKeysplittingHandshake();
+            if(keysplittingEnabled) {
+                // If keysplitting is enabled start the keysplitting handshake
+                // and rely on this for setting up the ephemeral ssh key on the
+                // target
+                await this.performKeysplittingHandshake();
+            } else {
+                // If keysplitting not enabled then send the
+                await this.sendPubKeyViaBastion(sshPublicKey);
+            }
 
             return true;
         } catch(err) {
@@ -84,7 +96,11 @@ export class SsmTunnelWebsocketService
         }
     }
 
-    private async sendPubKey(pubKey: SshPK.Key) {
+    // This will send the pubkey through the bastion's AddSshPubKey websocket
+    // method which uses RunCommand to add the ssh pubkey to the target's
+    // authorized_keys file. This code path should ultimately be removed once
+    // keysplitting is fully enforced
+    private async sendPubKeyViaBastion(pubKey: SshPK.Key) {
         // key type and pubkey are space delimited in the resulting string
         // https://github.com/joyent/node-sshpk/blob/4342c21c2e0d3860f5268fd6fd8af6bdeddcc6fc/lib/formats/ssh.js#L99
         let [keyType, sshPubKey] = pubKey.toString('ssh').split(' ');
@@ -97,8 +113,7 @@ export class SsmTunnelWebsocketService
 
     private async performKeysplittingHandshake() {
         if(this.targetInfo.agentVersion === '') {
-            this.logger.warn(`Skipping keysplitting handshake because agent version is not set for target ${this.targetInfo.id}`);
-            return;
+            throw new Error(`Unable to perform keysplitting handshake: agentVersion is not known for target ${this.targetInfo.id}`);
         }
 
         this.logger.debug(`Starting keysplitting handshake with ${this.targetInfo.id}`);
@@ -122,8 +137,20 @@ export class SsmTunnelWebsocketService
             throw new Error(`Unknown agentId in sendOpenShellDataMessage for target ${this.targetInfo.id}`);
         }
 
+        // key type and pubkey are space delimited in the resulting string
+        // agent currently assuming key type of ssh-rsa
+        // https://github.com/joyent/node-sshpk/blob/4342c21c2e0d3860f5268fd6fd8af6bdeddcc6fc/lib/formats/ssh.js#L99
+        let sshPubKey = this.sshPublicKey.toString('ssh').split(' ')[1];
+
+        let sshTunnelOpenData: SshOpenActionPayload = {
+            username: this.username,
+            sshPubKey: sshPubKey
+        };
+
         await this.sendDataMessage(await this.keySplittingService.buildDataMessage(
-            this.targetInfo.agentId, 'ssh/open', await this.authConfigService.getIdToken()
+            this.targetInfo.agentId, 'ssh/open',
+            await this.authConfigService.getIdToken(),
+            sshTunnelOpenData
         ));
     }
 

@@ -118,7 +118,7 @@ export class KeySplittingService {
         return JSON.stringify( obj, allKeys);
     }
 
-    public async buildDataMessage(targetId: string, action: string, currentIdToken: string): Promise<DataMessageWrapper> {
+    public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload): Promise<DataMessageWrapper> {
         // Build our payload
         let dataMessage = {
             payload: {
@@ -127,7 +127,7 @@ export class KeySplittingService {
                 hPointer: this.currentHPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
-                payload: 'payload'
+                payload: this.JSONstringifyOrder(payload)
             },
             signature: ''
         };
