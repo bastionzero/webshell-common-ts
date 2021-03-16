@@ -55,7 +55,7 @@ export class KeySplittingService {
 
     public async getBZECertHash(currentIdToken: string): Promise<string> {
         let BZECert = await this.getBZECert(currentIdToken);
-        return this.hashBufferHelper(Buffer.from(this.JSONstringifyOrder(BZECert), 'utf-8'));
+        return this.hashHelper(this.JSONstringifyOrder(BZECert));
     }
 
     public async generateCerRand() {
@@ -136,7 +136,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signMessagePayload<DataMessagePayload>(dataMessage);
+        let signature = await this.signDataPayload(dataMessage.payload);
 
         // Then build and return our wrapped object
         dataMessage.signature = signature;
@@ -159,7 +159,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signMessagePayload<SynMessagePayload>(synMessage);
+        let signature = await this.signSynMessage(synMessage.payload);
 
         // Then build and return our wrapped object
         synMessage.signature = signature;
@@ -168,24 +168,28 @@ export class KeySplittingService {
         };
     }
 
-    private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
-        // this.logger.warn(`HASHING: ${this.JSONstringifyOrder(messagePayload.payload)}`);
-        return await this.signHelper(Buffer.from(this.JSONstringifyOrder(messagePayload.payload), 'utf-8').toString('hex'));
+    private async signDataPayload(payload: DataMessagePayload) {
+        // When signing data message we have to sign the hash
+        let toSign = this.hashHelper(this.JSONstringifyOrder(payload), 'hex')
+        return await ed.sign(toSign, this.privateKey);
+    }
+    private async signSynMessage(payload: SynMessagePayload) {
+        return await this.signHelper(this.JSONstringifyOrder(payload));
     }
 
-    private hashHelper(toHash: string) {
+    private hashHelper(toHash: string, format: BufferEncoding = 'base64') {
         // Helper function to hash a string for us
         const hashClient = new SHA3(256);
         hashClient.update(toHash);
-        return hashClient.digest('base64');
+        return hashClient.digest(format);
     }
 
-    private hashBufferHelper(toHash: Buffer) {
-        // Helper function to hash a buffer for us
-        const hashClient = new SHA3(256);
-        hashClient.update(toHash);
-        return hashClient.digest('base64');
-    }
+    // private hashBufferHelper(toHash: Buffer) {
+    //     // Helper function to hash a buffer for us
+    //     const hashClient = new SHA3(256);
+    //     hashClient.update(toHash);
+    //     return hashClient.digest('base64');
+    // }
 
     private async signHelper(toSign: string) {
         // Helper function to sign a string for us
