@@ -184,13 +184,6 @@ export class KeySplittingService {
         return hashClient.digest(format);
     }
 
-    // private hashBufferHelper(toHash: Buffer) {
-    //     // Helper function to hash a buffer for us
-    //     const hashClient = new SHA3(256);
-    //     hashClient.update(toHash);
-    //     return hashClient.digest('base64');
-    // }
-
     private async signHelper(toSign: string) {
         // Helper function to sign a string for us
         return await ed.sign(toSign, this.privateKey);
@@ -222,32 +215,4 @@ export class KeySplittingService {
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated keysplitting keys');
     }
-
-    // private arrayBufferToBase64(arrayBuffer: Uint8Array) {
-    //     var byteArray = new Uint8Array(arrayBuffer);
-    //     var byteString = '';
-    //     for(var i=0; i < byteArray.byteLength; i++) {
-    //         byteString += String.fromCharCode(byteArray[i]);
-    //     }
-    //     var b64 = Buffer.from(byteString).toString('base64');
-    
-    //     return b64;
-    // }
-    
-    // private addNewLines(str: string) {
-    //     var finalString = '';
-    //     while(str.length > 0) {
-    //         finalString += str.substring(0, 64) + '\n';
-    //         str = str.substring(64);
-    //     }
-    
-    //     return finalString;
-    // }
-    
-    // private toPem(privateKey: Uint8Array) {
-    //     var b64 = this.addNewLines(this.arrayBufferToBase64(privateKey));
-    //     var pem = "-----BEGIN PRIVATE KEY-----\n" + b64 + "-----END PRIVATE KEY-----";
-        
-    //     return pem;
-    // }
 }
