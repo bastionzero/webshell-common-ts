@@ -4,7 +4,7 @@ const crypto = require('crypto');
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
-import { BZECert, SynMessagePayload, DataMessagePayload, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage } from './keysplitting-types';
+import { BZECert, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, SynMessage, SynMessagePayload, DataMessagePayload } from './keysplitting-types';
 
 export class KeySplittingService {
     private config: ConfigInterface
@@ -131,7 +131,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signDataPayload(dataMessage.payload);
+        let signature = await this.signMessagePayload<DataMessagePayload>(dataMessage);
 
         // Then build and return our wrapped object
         dataMessage.signature = signature;
@@ -154,7 +154,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signSynMessage(synMessage.payload);
+        let signature = await this.signMessagePayload<SynMessagePayload>(synMessage);
 
         // Then build and return our wrapped object
         synMessage.signature = signature;
@@ -163,14 +163,9 @@ export class KeySplittingService {
         };
     }
 
-    private async signDataPayload(payload: DataMessagePayload) {
-        // When signing data message we have to sign the hash and sign the hex result of the hash
-        let toSign = this.hashHelper(this.JSONstringifyOrder(payload), 'hex');
-        return await this.signHelper(toSign);
-    }
-
-    private async signSynMessage(payload: SynMessagePayload) {
-        return await this.signHelper(this.JSONstringifyOrder(payload));
+    private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
+        let toSign = this.hashHelper(this.JSONstringifyOrder(messagePayload.payload), 'hex');
+        return await ed.sign(toSign, this.privateKey);
     }
 
     private hashHelper(toHash: string, format: BufferEncoding = 'base64') {
