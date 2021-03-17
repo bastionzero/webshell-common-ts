@@ -64,7 +64,7 @@ export class KeySplittingService {
         this.data.cerRand = cerRand.toString('base64');
 
         var cerRandSig = await this.signHelper(cerRand);
-        this.data.cerRandSig = Buffer.from(cerRandSig).toString('base64');
+        this.data.cerRandSig = cerRandSig;
 
         // Update our config
         this.config.updateKeySplitting(this.data);
