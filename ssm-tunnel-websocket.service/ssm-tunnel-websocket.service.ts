@@ -1,12 +1,10 @@
-import crypto from 'crypto';
-
 import SshPK from 'sshpk';
 import { Observable, Subject } from 'rxjs';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelTargetInfo, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, KeySplittingMessage, ErrorMessageWrapper, KeysplittingErrorTypes } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';

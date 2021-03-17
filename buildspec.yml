@@ -10,7 +10,7 @@ phases:
       nodejs: 12
     commands:
       - echo Install started on `date`
-      - npm install -g eslint typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin
+      - npm install -g eslint typescript @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-unused-imports
       - export NODE_PATH=$(npm root -g)
   build:
     commands:
