@@ -166,7 +166,7 @@ export class KeySplittingService {
     private async signDataPayload(payload: DataMessagePayload) {
         // When signing data message we have to sign the hash and sign the hex result of the hash
         let toSign = this.hashHelper(this.JSONstringifyOrder(payload), 'hex');
-        return await ed.sign(toSign, this.privateKey);
+        return await this.signHelper(toSign);
     }
 
     private async signSynMessage(payload: SynMessagePayload) {
@@ -182,7 +182,7 @@ export class KeySplittingService {
 
     private async signHelper(toSign: string) {
         // Helper function to sign a string for us
-        return await ed.sign(toSign, this.privateKey);
+        return Buffer.from(await ed.sign(toSign, this.privateKey), 'hex').toString('base64');
     }
 
     private async loadKeys() {
