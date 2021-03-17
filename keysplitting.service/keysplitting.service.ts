@@ -1,10 +1,10 @@
 import { SHA3 } from 'sha3';
-import * as secp from 'noble-secp256k1';
+import * as ed from 'noble-ed25519';
 const crypto = require('crypto');
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
-import { BZECert, SynMessagePayload, DataMessagePayload, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage } from './keysplitting-types';
+import { BZECert, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, SynMessagePayload, DataMessagePayload } from './keysplitting-types';
 
 export class KeySplittingService {
     private config: ConfigInterface
@@ -12,8 +12,8 @@ export class KeySplittingService {
     private logger: ILogger;
     private publicKey: Uint8Array;
     private privateKey: Uint8Array;
-    private expectedHPointer: string;
-    private currentHPointer: string;
+    private expectedHPointer: Buffer;
+    private currentHPointer: Buffer;
 
     constructor(config: ConfigInterface, logger: ILogger) {
         this.config = config;
@@ -23,24 +23,27 @@ export class KeySplittingService {
         // Initially our expected HPointer is null
         this.expectedHPointer = null;
         this.currentHPointer = null;
-
-        // Load our keys if they are there
-        this.loadKeys();
     }
 
-    public setInitialIdToken(latestIdToken: string) {
+    public async init(): Promise<void> {
+        // Init function so we can wait on async function calls
+        // Load our keys if they are there
+        await this.loadKeys();
+    }
+
+    public setInitialIdToken(latestIdToken: string): void {
         this.data.initialIdToken = latestIdToken;
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Updated latestIdToken');
     }
 
-    public getConfig() {
+    public getConfig(): KeySplittingConfigSchema {
         return this.data;
     }
 
     public async getBZECert(currentIdToken: string): Promise<BZECert> {
         if (this.data.initialIdToken == undefined || this.data.publicKey == undefined || this.data.cerRand == undefined || this.data.cerRandSig == undefined)
-            throw new Error('Undefined values in BZECert!');
+            throw new Error('Undefined values in BZECert! Ensure you are logged in (zli login --Google/Microsoft).');
         return {
             initialIdToken: this.data.initialIdToken,
             currentIdToken: currentIdToken,
@@ -52,55 +55,50 @@ export class KeySplittingService {
 
     public async getBZECertHash(currentIdToken: string): Promise<string> {
         let BZECert = await this.getBZECert(currentIdToken);
-        return this.hashHelper(this.JSONstringifyOrder(BZECert));
+        return this.hashHelper(this.JSONstringifyOrder(BZECert)).toString('base64');
     }
 
-    public async generateCerRand() {
+    public async generateCerRand(): Promise<void> {
         // Helper function to generate and store our cerRand and cerRandSig
         var cerRand = crypto.randomBytes(32);
         this.data.cerRand = cerRand.toString('base64');
 
         var cerRandSig = await this.signHelper(cerRand);
-        this.data.cerRandSig = Buffer.from(cerRandSig).toString('base64');
+        this.data.cerRandSig = cerRandSig;
 
         // Update our config
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated cerRand and cerRandSig');
     }
 
-    public createNonce() {
+    public createNonce(): string {
         // Helper function to create a Nonce
-        const hashClient = new SHA3(256);
-        const hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
-
-        // Update and return
-        hashClient.update(hashString);
-
-        let nonce = hashClient.digest('base64');
+        let hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        let nonce = this.hashHelper(hashString).toString('base64');
         this.logger.debug(`Creating new nonce: ${nonce}`);
         return nonce;
     }
 
-    public async generateKeysplittingLoginData() {
+    public async generateKeysplittingLoginData(): Promise<void> {
         // Reset our keys and recreate them
         this.generateKeys();
         this.generateCerRand();
         this.logger.debug('Reset keysplitting service');
     }
 
-    public setExpectedHPointer(message: any) {
+    public setExpectedHPointer(message: any): void {
         // Helper function to set our expected HPointer
         this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
-    public setCurrentHPointer(message: any) {
+    public setCurrentHPointer(message: any): void {
         // Helper function to set our current HPointer
         this.currentHPointer = this.hashHelper(this.JSONstringifyOrder(message));
     }
 
-    public validateHPointer(hPointer: string) {
+    public validateHPointer(hPointer: string): boolean {
         if (this.expectedHPointer != null)
-            if (this.expectedHPointer == hPointer) {
+            if (this.expectedHPointer.toString('base64') == hPointer) {
                 // Return True
                 return true;
             } else {
@@ -110,7 +108,7 @@ export class KeySplittingService {
         throw Error('Expected HPointer is not set!');
     }
 
-    private JSONstringifyOrder(obj: any) {
+    private JSONstringifyOrder(obj: any): string {
         // Ref: https://stackoverflow.com/a/53593328/9186330
         let allKeys: string[] = [];
         JSON.stringify(obj, function (key, value) { allKeys.push(key); return value; });
@@ -124,7 +122,7 @@ export class KeySplittingService {
             payload: {
                 type: 'DATA',
                 action: action,
-                hPointer: this.currentHPointer,
+                hPointer: this.currentHPointer.toString('base64'),
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
                 payload: this.JSONstringifyOrder(payload)
@@ -165,28 +163,29 @@ export class KeySplittingService {
         };
     }
 
-    private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>) {
-        return await this.signHelper(Buffer.from(this.JSONstringifyOrder(messagePayload.payload), 'utf-8').toString('hex'));
+    private async signMessagePayload<T>(messagePayload: KeySplittingMessage<T>): Promise<string> {
+        return this.signHelper(this.JSONstringifyOrder(messagePayload.payload));
     }
 
-    private hashHelper(toHash: string) {
+    private hashHelper(toHash: string): Buffer {
         // Helper function to hash a string for us
         const hashClient = new SHA3(256);
         hashClient.update(toHash);
-        return hashClient.digest('base64');
+        return hashClient.digest();
     }
 
-    private async signHelper(toSign: string) {
+    private async signHelper(toSign: string): Promise<string> {
         // Helper function to sign a string for us
-        return await secp.sign(toSign, this.privateKey);
+        let hashedSign = this.hashHelper(toSign);
+        return Buffer.from(await ed.sign(hashedSign, this.privateKey)).toString('base64');
     }
 
-    private loadKeys() {
+    private async loadKeys(): Promise<void> {
         // Helper function to check if keys are undefined and load them in
         if (this.data.privateKey != undefined) {
             // We need to load in our keys
             this.privateKey = Buffer.from(this.data.privateKey, 'base64');
-            this.publicKey = secp.getPublicKey(this.privateKey);
+            this.publicKey = await ed.getPublicKey(this.privateKey);
 
             // Validate the public key
             if (Buffer.from(this.publicKey).toString('base64') != this.data.publicKey) {
@@ -196,10 +195,10 @@ export class KeySplittingService {
         }
     }
 
-    private generateKeys() {
+    private async generateKeys(): Promise<void> {
         // Create our keys
-        this.privateKey = crypto.randomBytes(32);
-        this.publicKey = secp.getPublicKey(this.privateKey);
+        this.privateKey = ed.utils.randomPrivateKey();
+        this.publicKey = await ed.getPublicKey(this.privateKey);
 
         // Update our config
         this.data.privateKey = Buffer.from(this.privateKey).toString('base64');
