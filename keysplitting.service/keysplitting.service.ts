@@ -63,8 +63,6 @@ export class KeySplittingService {
         var cerRand = crypto.randomBytes(32);
         this.data.cerRand = cerRand.toString('base64');
 
-        this.logger.info(`HASHED CER RAND: ${this.hashHelper(cerRand).toString('base64')}`)
-
         var cerRandSig = await this.signHelper(cerRand);
         this.data.cerRandSig = cerRandSig;
 
