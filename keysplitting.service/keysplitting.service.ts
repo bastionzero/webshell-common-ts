@@ -4,7 +4,7 @@ const crypto = require('crypto');
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
-import { BZECert, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, SynMessage, SynMessagePayload, DataMessagePayload } from './keysplitting-types';
+import { BZECert, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, SynMessagePayload, DataMessagePayload } from './keysplitting-types';
 
 export class KeySplittingService {
     private config: ConfigInterface
