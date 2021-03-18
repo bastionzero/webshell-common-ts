@@ -130,11 +130,11 @@ export class SsmTunnelWebsocketService
 
         return new Promise((res, rej) => {
             this.keysplittingHandshakeComplete
-            .pipe(timeout(KeysplittingHandshakeTimeout * 1000))
-            .subscribe(
-                completedSuccessfully => res(completedSuccessfully),
-                _ => rej(`Keyspliting handshake timed out after ${KeysplittingHandshakeTimeout} seconds`)
-            )
+                .pipe(timeout(KeysplittingHandshakeTimeout * 1000))
+                .subscribe(
+                    completedSuccessfully => res(completedSuccessfully),
+                    _ => rej(`Keyspliting handshake timed out after ${KeysplittingHandshakeTimeout} seconds`)
+                );
         });
     }
 
