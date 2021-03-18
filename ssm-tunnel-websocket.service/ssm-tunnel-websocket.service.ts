@@ -1,5 +1,6 @@
 import SshPK from 'sshpk';
 import { Observable, Subject } from 'rxjs';
+import { timeout } from 'rxjs/operators';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
@@ -9,6 +10,8 @@ import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
 
+const KeysplittingHandshakeTimeout = 15; // in seconds
+
 export class SsmTunnelWebsocketService
 {
     private sequenceNumber = 0;
@@ -17,6 +20,10 @@ export class SsmTunnelWebsocketService
     private errorSubject: Subject<string> = new Subject<string>();
     private username: string;
     private sshPublicKey: SshPK.Key;
+
+    private keysplittingHandshakeCompleteSubject = new Subject<boolean>();
+    private keysplittingHandshakeComplete: Observable<boolean> = this.keysplittingHandshakeCompleteSubject.asObservable();
+
     public errors: Observable<string> = this.errorSubject.asObservable();
 
     constructor(
@@ -51,7 +58,7 @@ export class SsmTunnelWebsocketService
                 // If keysplitting is enabled start the keysplitting handshake
                 // and rely on this for setting up the ephemeral ssh key on the
                 // target
-                await this.performKeysplittingHandshake();
+                return await this.performKeysplittingHandshake();
             } else {
                 // If keysplitting not enabled then send the
                 await this.sendPubKeyViaBastion(sshPublicKey);
@@ -111,7 +118,7 @@ export class SsmTunnelWebsocketService
         });
     }
 
-    private async performKeysplittingHandshake() {
+    private async performKeysplittingHandshake(): Promise<boolean> {
         if(this.targetInfo.agentVersion === '') {
             throw new Error(`Unable to perform keysplitting handshake: agentVersion is not known for target ${this.targetInfo.id}`);
         }
@@ -120,6 +127,15 @@ export class SsmTunnelWebsocketService
         this.logger.debug(`Agent Version ${this.targetInfo.agentVersion}, Agent ID: ${this.targetInfo.agentId}`);
 
         await this.sendOpenShellSynMessage();
+
+        return new Promise((res, rej) => {
+            this.keysplittingHandshakeComplete
+            .pipe(timeout(KeysplittingHandshakeTimeout * 1000))
+            .subscribe(
+                completedSuccessfully => res(completedSuccessfully),
+                _ => rej(`Keyspliting handshake timed out after ${KeysplittingHandshakeTimeout} seconds`)
+            )
+        });
     }
 
     private async sendOpenShellSynMessage() {
@@ -216,6 +232,9 @@ export class SsmTunnelWebsocketService
                 // Update the expected HPointer
                 this.keySplittingService.setCurrentHPointer(dataAckMessage.dataAckPayload.payload);
 
+                // Mark the keysplitting handshake as completed successfully
+                this.keysplittingHandshakeCompleteSubject.next(true);
+
             } catch (e) {
                 this.logger.error(`Error in ReceiveDataAck: ${e}`);
             }
@@ -286,7 +305,7 @@ export class SsmTunnelWebsocketService
         }
     }
 
-    private async handleError(errorMessage: string) {
+    private handleError(errorMessage: string) {
         this.logger.error(errorMessage);
         this.errorSubject.next(errorMessage);
     }
