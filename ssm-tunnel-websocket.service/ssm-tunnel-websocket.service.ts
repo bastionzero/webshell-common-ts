@@ -54,12 +54,15 @@ export class SsmTunnelWebsocketService
                 targetUser: username
             });
 
-            if(keysplittingEnabled) {
+            if(this.targetInfo.agentVersion != '' && keysplittingEnabled) {
                 // If keysplitting is enabled start the keysplitting handshake
                 // and rely on this for setting up the ephemeral ssh key on the
                 // target
                 return await this.performKeysplittingHandshake();
             } else {
+                if (keysplittingEnabled && this.targetInfo.agentVersion == '') {
+                    this.logger.warn('Keysplitting enabled, but target did not return an agent version! Defaulting to normal ssh tunneling.')
+                }
                 // If keysplitting not enabled then send the
                 await this.sendPubKeyViaBastion(sshPublicKey);
             }
