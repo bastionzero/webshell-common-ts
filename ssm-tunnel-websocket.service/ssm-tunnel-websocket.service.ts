@@ -228,7 +228,7 @@ export class SsmTunnelWebsocketService
 
                 this.sendOpenShellDataMessage();
             } catch (e) {
-                this.logger.error(`Error in ReceiveSynAck: ${e}`);
+                this.handleError(`Error in ReceiveDataAck: ${e}`);
             }
         });
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, async (dataAckMessage: DataAckMessageWrapper) => {
@@ -256,7 +256,7 @@ export class SsmTunnelWebsocketService
                 this.keysplittingHandshakeCompleteSubject.next(true);
 
             } catch (e) {
-                this.logger.error(`Error in ReceiveDataAck: ${e}`);
+                this.handleError(`Error in ReceiveDataAck: ${e}`);
             }
         });
 

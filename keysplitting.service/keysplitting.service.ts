@@ -121,7 +121,7 @@ export class KeySplittingService {
         // Validate the signature
         let toValidate: Buffer = this.hashHelper(this.JSONstringifyOrder(message.payload));
         let signature: Buffer = Buffer.from(message.signature, 'base64');
-        if (await ed.verify(signature, toValidate, this.targetPublicKey) == true) {
+        if (! await ed.verify(signature, toValidate, this.targetPublicKey)) {
             return true;
         }
         return false;
