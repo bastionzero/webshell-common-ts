@@ -5,7 +5,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelTargetInfo, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload, DataAckPayload, SynAckPayload, DataAckMessage } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -202,13 +202,23 @@ export class SsmTunnelWebsocketService
         });
 
         // Set up receive message handlers
-        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, (synAckMessage: SynAckMessageWrapper) => {
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveSynAck, async (synAckMessage: SynAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(synAckMessage.synAckPayload.payload.hPointer) != true) {
                     let errorString = '[SynAck] Error Validating HPointer!';
+                    this.logger.error(errorString);
+                    throw new Error(errorString);
+                }
+
+                // For out SynAck message we need to set the public key of the target
+                this.keySplittingService.setTargetPublicKey(synAckMessage.synAckPayload.payload.targetPublicKey);
+
+                // Validate our signature
+                if (await this.keySplittingService.validateSignature<SynAckPayload>(synAckMessage.synAckPayload) != true) {
+                    let errorString = '[SynAck] Error Validating Signature!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
@@ -221,13 +231,20 @@ export class SsmTunnelWebsocketService
                 this.logger.error(`Error in ReceiveSynAck: ${e}`);
             }
         });
-        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, (dataAckMessage: DataAckMessageWrapper) => {
+        this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveDataAck, async (dataAckMessage: DataAckMessageWrapper) => {
             try {
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(dataAckMessage.dataAckPayload.payload.hPointer) != true) {
                     let errorString = '[DataAck] Error Validating HPointer!';
+                    this.logger.error(errorString);
+                    throw new Error(errorString);
+                }
+
+                // Validate our signature
+                if (await this.keySplittingService.validateSignature<DataAckPayload>(dataAckMessage.dataAckPayload) != true) {
+                    let errorString = '[DataAck] Error Validating Signature!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
