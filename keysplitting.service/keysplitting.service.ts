@@ -14,6 +14,7 @@ export class KeySplittingService {
     private privateKey: Uint8Array;
     private expectedHPointer: Buffer;
     private currentHPointer: Buffer;
+    private targetPublicKey: ed.Point;
 
     constructor(config: ConfigInterface, logger: ILogger) {
         this.config = config;
@@ -106,6 +107,24 @@ export class KeySplittingService {
                 return false;
             }
         throw Error('Expected HPointer is not set!');
+    }
+
+    public setTargetPublicKey(targetPublicKey: string): void {
+        this.targetPublicKey = ed.Point.fromHex(Buffer.from(targetPublicKey, 'base64').toString('hex'));
+    }
+
+    public async validateSignature<T>(message: KeySplittingMessage<T>): Promise<boolean> {
+        if (this.targetPublicKey == undefined) {
+            throw new Error('Error validating message! Target Public Key is undefined!');
+        }
+
+        // Validate the signature
+        let toValidate: Buffer = this.hashHelper(this.JSONstringifyOrder(message.payload));
+        let signature: Buffer = Buffer.from(message.signature, 'base64');
+        if (await ed.verify(signature, toValidate, this.targetPublicKey)) {
+            return true;
+        }
+        return false;
     }
 
     private JSONstringifyOrder(obj: any): string {
