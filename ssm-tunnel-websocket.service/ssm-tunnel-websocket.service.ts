@@ -257,7 +257,7 @@ export class SsmTunnelWebsocketService
                 this.handleError('Keysplitting Error: Invalid ID token. Please try logging out and in again.');
                 break;
             default:
-                this.handleError(`Unhandled Keysplitting error: ${errorPayload.message}`);
+                this.handleError(`Unhandled Keysplitting Error: ${errorPayload.errorType}::${errorPayload.message}`);
             }
         });
     }
