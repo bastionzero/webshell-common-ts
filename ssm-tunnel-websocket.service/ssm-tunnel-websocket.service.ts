@@ -270,11 +270,11 @@ export class SsmTunnelWebsocketService
             this.logger.error(`Error Message: ${errorPayload.message}`);
 
             switch(errorPayload.errorType) {
-            case KeysplittingErrorTypes.BZECertIDTokenValidationError:
-                // TODO: add error handling for id token expired
+            case KeysplittingErrorTypes.BZECertInvalidIDToken:
+                this.handleError('Keysplitting Error: Invalid ID token. Please try logging out and in again.');
                 break;
             default:
-                this.handleError(`Unhandled keysplitting error: ${errorPayload.message}`);
+                this.handleError(`Unhandled Keysplitting Error: ${errorPayload.errorType}::${errorPayload.message}`);
             }
         });
     }
