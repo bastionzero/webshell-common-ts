@@ -61,7 +61,7 @@ export class SsmTunnelWebsocketService
                 return await this.performKeysplittingHandshake();
             } else {
                 if (keysplittingEnabled && (this.targetInfo.agentVersion == '' || this.targetInfo.agentVersion == 'Unknown')) {
-                    this.logger.warn('Keysplitting enabled, but target did not return an agent version! Defaulting to normal ssh tunneling.')
+                    this.logger.warn('Keysplitting enabled, but target did not return an agent version! Defaulting to normal ssh tunneling.');
                 }
                 // If keysplitting not enabled then send the
                 await this.sendPubKeyViaBastion(sshPublicKey);
