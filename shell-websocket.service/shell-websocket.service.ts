@@ -1,23 +1,12 @@
 import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subscription } from 'rxjs';
-import { ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState } from './websocket.service.types';
+import { ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState, TerminalSize } from './shell-websocket.service.types';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
+import { ILogger } from '../logging/logging.types';
+import { IDisposable } from '../utility/disposable';
 
-// ref: https://gist.github.com/dsherret/cf5d6bec3d0f791cef00
-export interface IDisposable
-{
-    dispose() : void;
-}
-
-export interface TerminalSize
-{
-    rows: number;
-    columns: number;
-}
-
-// Reflects the IShell interface
-export class WebsocketStream implements IDisposable
+export class ShellWebsocketService implements IDisposable
 {
     private connectionId : string;
     private websocket : HubConnection;
@@ -25,6 +14,7 @@ export class WebsocketStream implements IDisposable
     // stdout
     private outputSubject: BehaviorSubject<string>;
     public outputData: Observable<string>;
+
     // stdin
     private inputSubscription: Subscription;
     private resizeSubscription: Subscription;
@@ -34,6 +24,7 @@ export class WebsocketStream implements IDisposable
     public shellStateData: Observable<ShellState>;
 
     constructor(
+        private logger: ILogger,
         private authConfigService: AuthConfigService,
         connectionId: string,
         inputStream: BehaviorSubject<string>,
@@ -85,6 +76,7 @@ export class WebsocketStream implements IDisposable
         this.websocket.on(
             ShellHubIncomingMessages.shellStart,
             () => {
+                this.logger.trace('got shellStart message');
                 this.shellStateSubject.next({start: true, disconnect: false, delete: false, ready: false});
             }
         );
@@ -92,6 +84,7 @@ export class WebsocketStream implements IDisposable
         this.websocket.on(
             ShellHubIncomingMessages.shellDisconnect,
             () => {
+                this.logger.trace('got shellDisconnect message');
                 this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
             }
         );
@@ -100,19 +93,24 @@ export class WebsocketStream implements IDisposable
         this.websocket.on(
             ShellHubIncomingMessages.shellDelete,
             () => {
-                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+                this.logger.trace('got shellDelete message');
+                this.shellStateSubject.next({start: false, disconnect: true, delete: true, ready: false});
             }
         );
 
         this.websocket.on(
             ShellHubIncomingMessages.connectionReady,
             _ => {
+                this.logger.trace('got connectionReady disconnect message');
                 this.shellStateSubject.next({start: false, disconnect: false, delete: false, ready: true});
             }
         );
 
-        // won't get called at the moment since closing connection does not imply closing websocket
-        this.websocket.onclose(() => this.shellStateSubject.next({start: false, disconnect: false, delete: false, ready: false}));
+        // this is called if the server closes the websocket
+        this.websocket.onclose(() => {
+            this.logger.debug('websocket closed by server');
+            this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+        });
 
         await this.websocket.start();
     }

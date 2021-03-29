@@ -18,3 +18,9 @@ export interface ShellState {
     delete: boolean;
     ready: boolean;
 }
+
+export interface TerminalSize
+{
+    rows: number;
+    columns: number;
+}
