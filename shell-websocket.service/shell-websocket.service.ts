@@ -101,7 +101,7 @@ export class ShellWebsocketService implements IDisposable
         this.websocket.on(
             ShellHubIncomingMessages.connectionReady,
             _ => {
-                this.logger.trace('got connectionReady disconnect message');
+                this.logger.trace('got connectionReady message');
                 this.shellStateSubject.next({start: false, disconnect: false, delete: false, ready: true});
             }
         );
