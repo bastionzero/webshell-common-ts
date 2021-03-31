@@ -1,6 +1,6 @@
 import { SHA3 } from 'sha3';
 import * as ed from 'noble-ed25519';
-const crypto = require('crypto');
+import * as CryptoJS from 'crypto-js';
 
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
@@ -61,9 +61,8 @@ export class KeySplittingService {
 
     public async generateCerRand(): Promise<void> {
         // Helper function to generate and store our cerRand and cerRandSig
-        var cerRand = crypto.randomBytes(32);
+        var cerRand = this.randomBytes(32);
         this.data.cerRand = cerRand.toString('base64');
-
         var cerRandSig = await this.signHelper(cerRand);
         this.data.cerRandSig = cerRandSig;
 
@@ -74,7 +73,7 @@ export class KeySplittingService {
 
     public createNonce(): string {
         // Helper function to create a Nonce
-        let hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        let hashString = Buffer.from(''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand), 'utf8');
         let nonce = this.hashHelper(hashString).toString('base64');
         this.logger.debug(`Creating new nonce: ${nonce}`);
         return nonce;
@@ -82,8 +81,8 @@ export class KeySplittingService {
 
     public async generateKeysplittingLoginData(): Promise<void> {
         // Reset our keys and recreate them
-        this.generateKeys();
-        this.generateCerRand();
+        await this.generateKeys();
+        await this.generateCerRand();
         this.logger.debug('Reset keysplitting service');
     }
 
@@ -127,12 +126,12 @@ export class KeySplittingService {
         return false;
     }
 
-    private JSONstringifyOrder(obj: any): string {
+    private JSONstringifyOrder(obj: any): Buffer {
         // Ref: https://stackoverflow.com/a/53593328/9186330
         let allKeys: string[] = [];
         JSON.stringify(obj, function (key, value) { allKeys.push(key); return value; });
         allKeys.sort();
-        return JSON.stringify( obj, allKeys);
+        return Buffer.from(JSON.stringify( obj, allKeys), 'utf8');
     }
 
     public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload): Promise<DataMessageWrapper> {
@@ -144,7 +143,7 @@ export class KeySplittingService {
                 hPointer: this.currentHPointer.toString('base64'),
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
-                payload: this.JSONstringifyOrder(payload)
+                payload: this.JSONstringifyOrder(payload).toString('utf8')
             },
             signature: ''
         };
@@ -165,7 +164,7 @@ export class KeySplittingService {
             payload: {
                 type: 'SYN',
                 action: action,
-                nonce: crypto.randomBytes(32).toString('base64'),
+                nonce: this.randomBytes(32).toString('base64'),
                 targetId: targetId,
                 BZECert: await this.getBZECert(currentIdToken)
             },
@@ -186,14 +185,14 @@ export class KeySplittingService {
         return this.signHelper(this.JSONstringifyOrder(messagePayload.payload));
     }
 
-    private hashHelper(toHash: string): Buffer {
+    private hashHelper(toHash: Buffer): Buffer {
         // Helper function to hash a string for us
         const hashClient = new SHA3(256);
         hashClient.update(toHash);
         return hashClient.digest();
     }
 
-    private async signHelper(toSign: string): Promise<string> {
+    private async signHelper(toSign: Buffer): Promise<string> {
         // Helper function to sign a string for us
         let hashedSign = this.hashHelper(toSign);
         return Buffer.from(await ed.sign(hashedSign, this.privateKey)).toString('base64');
@@ -224,5 +223,10 @@ export class KeySplittingService {
         this.data.publicKey = Buffer.from(this.publicKey).toString('base64');
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Generated keysplitting keys');
+    }
+
+    // Helper function for generating random bytes returned as a Buffer
+    private randomBytes(size: number): Buffer {
+        return Buffer.from(CryptoJS.lib.WordArray.random(size).toString(CryptoJS.enc.Base64), 'base64');
     }
 }
