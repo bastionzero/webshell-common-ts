@@ -73,8 +73,8 @@ export class KeySplittingService {
 
     public createNonce(): string {
         // Helper function to create a Nonce
-        let hashString = Buffer.from(''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand), 'utf8');
-        let nonce = this.hashHelper(hashString).toString('base64');
+        let hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        let nonce = this.hashHelper(Buffer.from(hashString, 'utf8')).toString('base64');
         this.logger.debug(`Creating new nonce: ${nonce}`);
         return nonce;
     }
