@@ -75,8 +75,8 @@ export class SsmTunnelWebsocketService
     }
 
     public async sendData(data: Buffer) {
-        let base64EncData = data.toString('base64');
-        let len = base64EncData.length;
+        const base64EncData = data.toString('base64');
+        const len = base64EncData.length;
 
         try {
             // Batch the send data so that an individual message stays below the
@@ -85,12 +85,12 @@ export class SsmTunnelWebsocketService
 
             // Give some slack for the rest of the TunnelDataMessage (sequence
             // number + json encoding)
-            let maxChunkSize = HUB_RECEIVE_MAX_SIZE - 1024;
+            const maxChunkSize = HUB_RECEIVE_MAX_SIZE - 1024;
 
             while(offset < len) {
 
-                let chunkSize = Math.min(len - offset, maxChunkSize);
-                let dataMessage: TunnelDataMessage = {
+                const chunkSize = Math.min(len - offset, maxChunkSize);
+                const dataMessage: TunnelDataMessage = {
                     data: base64EncData.substr(offset, chunkSize),
                     sequenceNumber: this.sequenceNumber++
                 };
@@ -113,7 +113,7 @@ export class SsmTunnelWebsocketService
     private async sendPubKeyViaBastion(pubKey: SshPK.Key) {
         // key type and pubkey are space delimited in the resulting string
         // https://github.com/joyent/node-sshpk/blob/4342c21c2e0d3860f5268fd6fd8af6bdeddcc6fc/lib/formats/ssh.js#L99
-        let [keyType, sshPubKey] = pubKey.toString('ssh').split(' ');
+        const [keyType, sshPubKey] = pubKey.toString('ssh').split(' ');
 
         await this.sendAddSshPubKeyMessage({
             keyType: keyType,
@@ -159,9 +159,9 @@ export class SsmTunnelWebsocketService
         // key type and pubkey are space delimited in the resulting string
         // agent currently assuming key type of ssh-rsa
         // https://github.com/joyent/node-sshpk/blob/4342c21c2e0d3860f5268fd6fd8af6bdeddcc6fc/lib/formats/ssh.js#L99
-        let sshPubKey = this.sshPublicKey.toString('ssh').split(' ')[1];
+        const sshPubKey = this.sshPublicKey.toString('ssh').split(' ')[1];
 
-        let sshTunnelOpenData: SshOpenActionPayload = {
+        const sshTunnelOpenData: SshOpenActionPayload = {
             username: this.username,
             sshPubKey: sshPubKey
         };
@@ -190,7 +190,7 @@ export class SsmTunnelWebsocketService
         // Set up ReceiveData handler
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveData, (dataMessage: TunnelDataMessage) => {
             try {
-                let buf = Buffer.from(dataMessage.data, 'base64');
+                const buf = Buffer.from(dataMessage.data, 'base64');
 
                 this.logger.debug(`received tunnel data message with sequence number ${dataMessage.sequenceNumber}`);
 
@@ -208,7 +208,7 @@ export class SsmTunnelWebsocketService
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(synAckMessage.synAckPayload.payload.hPointer) != true) {
-                    let errorString = '[SynAck] Error Validating HPointer!';
+                    const errorString = '[SynAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
@@ -218,7 +218,7 @@ export class SsmTunnelWebsocketService
 
                 // Validate our signature
                 if (await this.keySplittingService.validateSignature<SynAckPayload>(synAckMessage.synAckPayload) != true) {
-                    let errorString = '[SynAck] Error Validating Signature!';
+                    const errorString = '[SynAck] Error Validating Signature!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
@@ -237,14 +237,14 @@ export class SsmTunnelWebsocketService
 
                 // Validate our HPointer
                 if (this.keySplittingService.validateHPointer(dataAckMessage.dataAckPayload.payload.hPointer) != true) {
-                    let errorString = '[DataAck] Error Validating HPointer!';
+                    const errorString = '[DataAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
 
                 // Validate our signature
                 if (await this.keySplittingService.validateSignature<DataAckPayload>(dataAckMessage.dataAckPayload) != true) {
-                    let errorString = '[DataAck] Error Validating Signature!';
+                    const errorString = '[DataAck] Error Validating Signature!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
                 }
@@ -261,7 +261,7 @@ export class SsmTunnelWebsocketService
         });
 
         this.websocket.on(SsmTunnelHubIncomingMessages.ReceiveError, (errorMessage: ErrorMessageWrapper) => {
-            let errorPayload = errorMessage.errorPayload.payload;
+            const errorPayload = errorMessage.errorPayload.payload;
 
             // TODO: check signature on error payload
 
@@ -317,7 +317,7 @@ export class SsmTunnelWebsocketService
         if(this.websocket === undefined || this.websocket.state == HubConnectionState.Disconnected)
             throw new Error('Hub disconnected');
 
-        let response = await this.websocket.invoke<WebsocketResponse>(methodName, message);
+        const response = await this.websocket.invoke<WebsocketResponse>(methodName, message);
 
         // Handle Hub Error
         if(response.error) {

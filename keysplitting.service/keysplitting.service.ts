@@ -55,15 +55,15 @@ export class KeySplittingService {
     }
 
     public async getBZECertHash(currentIdToken: string): Promise<string> {
-        let BZECert = await this.getBZECert(currentIdToken);
+        const BZECert = await this.getBZECert(currentIdToken);
         return this.hashHelper(this.JSONstringifyOrder(BZECert)).toString('base64');
     }
 
     public async generateCerRand(): Promise<void> {
         // Helper function to generate and store our cerRand and cerRandSig
-        var cerRand = this.randomBytes(32);
+        const cerRand = this.randomBytes(32);
         this.data.cerRand = cerRand.toString('base64');
-        var cerRandSig = await this.signHelper(cerRand);
+        const cerRandSig = await this.signHelper(cerRand);
         this.data.cerRandSig = cerRandSig;
 
         // Update our config
@@ -73,8 +73,8 @@ export class KeySplittingService {
 
     public createNonce(): string {
         // Helper function to create a Nonce
-        let hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
-        let nonce = this.hashHelper(Buffer.from(hashString, 'utf8')).toString('base64');
+        const hashString = ''.concat(this.data.publicKey, this.data.cerRandSig, this.data.cerRand);
+        const nonce = this.hashHelper(Buffer.from(hashString, 'utf8')).toString('base64');
         this.logger.debug(`Creating new nonce: ${nonce}`);
         return nonce;
     }
@@ -118,8 +118,8 @@ export class KeySplittingService {
         }
 
         // Validate the signature
-        let toValidate: Buffer = this.hashHelper(this.JSONstringifyOrder(message.payload));
-        let signature: Buffer = Buffer.from(message.signature, 'base64');
+        const toValidate: Buffer = this.hashHelper(this.JSONstringifyOrder(message.payload));
+        const signature: Buffer = Buffer.from(message.signature, 'base64');
         if (await ed.verify(signature, toValidate, this.targetPublicKey)) {
             return true;
         }
@@ -128,7 +128,7 @@ export class KeySplittingService {
 
     private JSONstringifyOrder(obj: any): Buffer {
         // Ref: https://stackoverflow.com/a/53593328/9186330
-        let allKeys: string[] = [];
+        const allKeys: string[] = [];
         JSON.stringify(obj, function (key, value) { allKeys.push(key); return value; });
         allKeys.sort();
         return Buffer.from(JSON.stringify( obj, allKeys), 'utf8');
@@ -136,7 +136,7 @@ export class KeySplittingService {
 
     public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload): Promise<DataMessageWrapper> {
         // Build our payload
-        let dataMessage = {
+        const dataMessage = {
             payload: {
                 type: 'DATA',
                 action: action,
@@ -149,7 +149,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signMessagePayload<DataMessagePayload>(dataMessage);
+        const signature = await this.signMessagePayload<DataMessagePayload>(dataMessage);
 
         // Then build and return our wrapped object
         dataMessage.signature = signature;
@@ -160,7 +160,7 @@ export class KeySplittingService {
 
     public async buildSynMessage(targetId: string, action: string, currentIdToken: string): Promise<SynMessageWrapper> {
         // Build our payload
-        let synMessage = {
+        const synMessage = {
             payload: {
                 type: 'SYN',
                 action: action,
@@ -172,7 +172,7 @@ export class KeySplittingService {
         };
 
         // Then calculate our signature
-        let signature = await this.signMessagePayload<SynMessagePayload>(synMessage);
+        const signature = await this.signMessagePayload<SynMessagePayload>(synMessage);
 
         // Then build and return our wrapped object
         synMessage.signature = signature;
@@ -194,7 +194,7 @@ export class KeySplittingService {
 
     private async signHelper(toSign: Buffer): Promise<string> {
         // Helper function to sign a string for us
-        let hashedSign = this.hashHelper(toSign);
+        const hashedSign = this.hashHelper(toSign);
         return Buffer.from(await ed.sign(hashedSign, this.privateKey)).toString('base64');
     }
 
