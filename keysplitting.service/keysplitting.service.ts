@@ -126,6 +126,10 @@ export class KeySplittingService {
         return false;
     }
 
+    public removeKeysplittingData(): void {
+        this.config.removeKeySplitting();
+    }
+
     private JSONstringifyOrder(obj: any): Buffer {
         // Ref: https://stackoverflow.com/a/53593328/9186330
         const allKeys: string[] = [];

@@ -19,4 +19,5 @@ export function getDefaultKeysplittingConfig(): KeySplittingConfigSchema {
 export interface ConfigInterface {
     updateKeySplitting(data: KeySplittingConfigSchema): void
     loadKeySplitting(): KeySplittingConfigSchema
+    removeKeySplitting(): void
 }
