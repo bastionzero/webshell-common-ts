@@ -1,3 +1,9 @@
+export interface SsmTargetInfo {
+    id: string,
+    agentId: string;
+    agentVersion: string;
+}
+
 export interface BZECert {
     initialIdToken: string,
     currentIdToken: string,

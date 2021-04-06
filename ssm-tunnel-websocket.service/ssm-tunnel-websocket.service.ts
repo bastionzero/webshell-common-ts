@@ -4,8 +4,8 @@ import { timeout } from 'rxjs/operators';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
-import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelTargetInfo, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload, DataAckPayload, SynAckPayload } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload, DataAckPayload, SynAckPayload, SsmTargetInfo } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -15,7 +15,7 @@ const KeysplittingHandshakeTimeout = 15; // in seconds
 export class SsmTunnelWebsocketService
 {
     private sequenceNumber = 0;
-    private targetInfo: SsmTunnelTargetInfo;
+    private targetInfo: SsmTargetInfo;
     private websocket : HubConnection;
     private errorSubject: Subject<string> = new Subject<string>();
     private username: string;
@@ -30,7 +30,7 @@ export class SsmTunnelWebsocketService
         private logger: ILogger,
         private keySplittingService: KeySplittingService,
         private authConfigService: AuthConfigService,
-        targetInfo: SsmTunnelTargetInfo
+        targetInfo: SsmTargetInfo
     )
     {
         this.targetInfo = targetInfo;

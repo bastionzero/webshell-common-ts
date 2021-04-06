@@ -36,9 +36,3 @@ export enum SsmTunnelHubOutgoingMessages {
     SynMessage = 'SendSynMessage',
     DataMessage = 'SendDataMessage'
 }
-
-export interface SsmTunnelTargetInfo {
-    id: string,
-    agentId: string;
-    agentVersion: string;
-}

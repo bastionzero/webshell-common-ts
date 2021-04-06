@@ -1,5 +1,5 @@
 import { ILogger } from './logging.types';
-import signalR, { LogLevel } from '@microsoft/signalr';
+import { LogLevel } from '@microsoft/signalr';
 
 // Class that wraps our ILogger in order to conform to signalR's ILogger interface
 export class SignalRLogger implements signalR.ILogger
