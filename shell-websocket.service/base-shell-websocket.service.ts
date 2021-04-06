@@ -1,34 +1,36 @@
-import { HubConnection, HubConnectionBuilder } from '@microsoft/signalr';
-import { BehaviorSubject, Observable, Subscription } from 'rxjs';
-import { ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState, TerminalSize } from './shell-websocket.service.types';
+import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { IShellWebsocketService, ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState, TerminalSize } from './shell-websocket.service.types';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
 import { ILogger } from '../logging/logging.types';
-import { IDisposable } from '../utility/disposable';
+import { SignalRLogger } from '../logging/signalr-logger';
 
-export class ShellWebsocketService implements IDisposable
+export abstract class BaseShellWebsocketService implements IShellWebsocketService
 {
-    private connectionId : string;
-    private websocket : HubConnection;
+    protected websocket : HubConnection;
 
-    // stdout
-    private outputSubject: BehaviorSubject<string>;
-    public outputData: Observable<string>;
-
-    // stdin
+    // Input subscriptions
     private inputSubscription: Subscription;
     private resizeSubscription: Subscription;
 
-    // shell state
+    // Output Observables
+    private outputSubject: BehaviorSubject<string>;
+    public outputData: Observable<string>;
+
     private shellStateSubject: BehaviorSubject<ShellState>;
     public shellStateData: Observable<ShellState>;
 
+    protected abstract handleInput(data: string): Promise<void>;
+    protected abstract handleResize(terminalSize: TerminalSize): Promise<void>;
+    protected abstract handleShellStart(): Promise<void>;
+
     constructor(
-        private logger: ILogger,
-        private authConfigService: AuthConfigService,
-        connectionId: string,
-        inputStream: BehaviorSubject<string>,
-        resizeStream: BehaviorSubject<TerminalSize>
+        protected logger: ILogger,
+        protected authConfigService: AuthConfigService,
+        protected connectionId: string,
+        inputStream: Subject<string>,
+        resizeStream: Subject<TerminalSize>
     )
     {
         this.outputSubject = new BehaviorSubject<string>('');
@@ -36,32 +38,12 @@ export class ShellWebsocketService implements IDisposable
         this.shellStateSubject = new BehaviorSubject<ShellState>({start: false, disconnect: false, delete: false, ready: false});
         this.shellStateData = this.shellStateSubject.asObservable();
 
-
         this.connectionId = connectionId;
-
-        this.inputSubscription = inputStream.asObservable().subscribe(
-            async (data) =>
-            {
-                if(this.websocket && this.websocket.connectionId)
-                    this.websocket.invoke(
-                        ShellHubOutgoingMessages.shellInput,
-                        {Data: data}
-                    );
-            }
-        );
-
-        this.resizeSubscription = resizeStream.asObservable().subscribe(
-            async (terminalSize) => {
-                if(this.websocket && this.websocket.connectionId)
-                    this.websocket.invoke(
-                        ShellHubOutgoingMessages.shellGeometry,
-                        terminalSize
-                    );
-            }
-        );
+        this.inputSubscription = inputStream.asObservable().subscribe((data) => this.handleInput(data));
+        this.resizeSubscription = resizeStream.asObservable().subscribe((data) => this.handleResize(data));
     }
 
-    public async start() // take in terminal size?
+    public async start()
     {
         this.websocket = await this.createConnection();
 
@@ -73,13 +55,18 @@ export class ShellWebsocketService implements IDisposable
                 this.outputSubject.next(req.data);
             }
         );
-        this.websocket.on(
-            ShellHubIncomingMessages.shellStart,
-            () => {
-                this.logger.trace('got shellStart message');
+
+        this.websocket.on(ShellHubIncomingMessages.shellStart, async () => {
+            this.logger.trace('got shellStart message');
+
+            try {
+                await this.handleShellStart();
                 this.shellStateSubject.next({start: true, disconnect: false, delete: false, ready: false});
+            } catch(err) {
+                this.logger.error(err);
+                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
             }
-        );
+        });
 
         this.websocket.on(
             ShellHubIncomingMessages.shellDisconnect,
@@ -111,39 +98,11 @@ export class ShellWebsocketService implements IDisposable
             this.logger.debug('websocket closed by server');
             this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
         });
-
-        await this.websocket.start();
     }
 
-    public sendShellConnect(rows: number, cols: number)
+    public async sendShellConnect(rows: number, cols: number)
     {
-        if(this.websocket && this.websocket.connectionId)
-            this.websocket.invoke(
-                ShellHubOutgoingMessages.shellConnect,
-                { TerminalRows: rows, TerminalColumns: cols }
-            );
-    }
-
-    public async createConnection(): Promise<HubConnection> {
-        // connectionId is related to terminal session
-        // sessionId is for user authentication
-        const queryString = `?connectionId=${this.connectionId}&session_id=${this.authConfigService.getSessionId()}`;
-
-        const connectionUrl = `${this.authConfigService.getServiceUrl()}hub/ssh/${queryString}`;
-
-        const connectionBuilder = new HubConnectionBuilder();
-        connectionBuilder.withUrl(
-            connectionUrl,
-            { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
-        ).configureLogging(6); // log level 6 is no websocket logs
-        return connectionBuilder.build();
-    }
-
-    private destroyConnection() {
-        if(this.websocket) {
-            this.websocket.stop(); // maybe await on this for server not to complain
-            this.websocket = undefined;
-        }
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols });
     }
 
     public dispose() : void
@@ -152,5 +111,35 @@ export class ShellWebsocketService implements IDisposable
         this.inputSubscription.unsubscribe();
         this.resizeSubscription.unsubscribe();
         this.shellStateSubject.complete();
+    }
+
+    protected async sendWebsocketMessage<TReq>(methodName: string, message: TReq): Promise<void> {
+        if(this.websocket === undefined || this.websocket.state == HubConnectionState.Disconnected)
+            throw new Error('Hub disconnected');
+
+        await this.websocket.invoke(methodName, message);
+    }
+
+    private async createConnection(): Promise<HubConnection> {
+        // connectionId is related to terminal session
+        // sessionId is for user authentication
+        const queryString = `?connectionId=${this.connectionId}&session_id=${this.authConfigService.getSessionId()}`;
+
+        const connectionUrl = `${this.authConfigService.getServiceUrl()}hub/ssh/${queryString}`;
+
+        return new HubConnectionBuilder()
+            .withUrl(
+                connectionUrl,
+                { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
+            )
+            .configureLogging(new SignalRLogger(this.logger))
+            .build();
+    }
+
+    private destroyConnection() {
+        if(this.websocket) {
+            this.websocket.stop(); // maybe await on this for server not to complain
+            this.websocket = undefined;
+        }
     }
 }
