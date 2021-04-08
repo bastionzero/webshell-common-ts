@@ -5,7 +5,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
-import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload, DataAckPayload, SynAckPayload, SsmTargetInfo } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
+import { SynMessageWrapper, DataMessageWrapper, SynAckMessageWrapper, DataAckMessageWrapper, ErrorMessageWrapper, KeysplittingErrorTypes, SshOpenActionPayload, DataAckPayload, SynAckPayload, SsmTargetInfo, SshTunnelActions } from '../../webshell-common-ts/keysplitting.service/keysplitting-types';
 import { SignalRLogger } from '../../webshell-common-ts/logging/signalr-logger';
 import { ILogger } from '../logging/logging.types';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -23,6 +23,11 @@ export class SsmTunnelWebsocketService
 
     private keysplittingHandshakeCompleteSubject = new Subject<boolean>();
     private keysplittingHandshakeComplete: Observable<boolean> = this.keysplittingHandshakeCompleteSubject.asObservable();
+
+    private synSshOpenMessageHPointer: string;
+    private dataSshOpenMessageHPointer: string;
+    private synAckSshOpenMessageHPointer: string;
+    private dataAckSshOpenMessageHPointer: string;
 
     public errors: Observable<string> = this.errorSubject.asObservable();
 
@@ -146,9 +151,14 @@ export class SsmTunnelWebsocketService
             throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.targetInfo.id}`);
         }
 
-        await this.sendSynMessage(await this.keySplittingService.buildSynMessage(
-            this.targetInfo.agentId, 'ssh/open', await this.authConfigService.getIdToken()
-        ));
+        const synMessage = await this.keySplittingService.buildSynMessage(
+            this.targetInfo.agentId,
+            SshTunnelActions.Open,
+            await this.authConfigService.getIdToken()
+        );
+        this.synSshOpenMessageHPointer = this.keySplittingService.getHPointer(synMessage.synPayload.payload);
+
+        await this.sendSynMessage(synMessage);
     }
 
     private async sendOpenShellDataMessage() {
@@ -166,11 +176,17 @@ export class SsmTunnelWebsocketService
             sshPubKey: sshPubKey
         };
 
-        await this.sendDataMessage(await this.keySplittingService.buildDataMessage(
-            this.targetInfo.agentId, 'ssh/open',
+        const dataMessage = await this.keySplittingService.buildDataMessage(
+            this.targetInfo.agentId,
+            SshTunnelActions.Open,
             await this.authConfigService.getIdToken(),
-            sshTunnelOpenData
-        ));
+            sshTunnelOpenData,
+            this.synAckSshOpenMessageHPointer
+        );
+
+        this.dataSshOpenMessageHPointer = this.keySplittingService.getHPointer(dataMessage.dataPayload.payload);
+
+        await this.sendDataMessage(dataMessage);
     }
 
     private async closeConnection() {
@@ -207,7 +223,7 @@ export class SsmTunnelWebsocketService
                 this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
 
                 // Validate our HPointer
-                if (this.keySplittingService.validateHPointer(synAckMessage.synAckPayload.payload.hPointer) != true) {
+                if (synAckMessage.synAckPayload.payload.hPointer !== this.synSshOpenMessageHPointer) {
                     const errorString = '[SynAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
@@ -223,8 +239,8 @@ export class SsmTunnelWebsocketService
                     throw new Error(errorString);
                 }
 
-                // Update Current HPointer
-                this.keySplittingService.setCurrentHPointer(synAckMessage.synAckPayload.payload);
+                // Set synAck hPointer
+                this.synAckSshOpenMessageHPointer = this.keySplittingService.getHPointer(synAckMessage.synAckPayload.payload);
 
                 this.sendOpenShellDataMessage();
             } catch (e) {
@@ -236,7 +252,7 @@ export class SsmTunnelWebsocketService
                 this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
 
                 // Validate our HPointer
-                if (this.keySplittingService.validateHPointer(dataAckMessage.dataAckPayload.payload.hPointer) != true) {
+                if (dataAckMessage.dataAckPayload.payload.hPointer !== this.dataSshOpenMessageHPointer) {
                     const errorString = '[DataAck] Error Validating HPointer!';
                     this.logger.error(errorString);
                     throw new Error(errorString);
@@ -249,8 +265,7 @@ export class SsmTunnelWebsocketService
                     throw new Error(errorString);
                 }
 
-                // Update the expected HPointer
-                this.keySplittingService.setCurrentHPointer(dataAckMessage.dataAckPayload.payload);
+                this.dataAckSshOpenMessageHPointer = this.keySplittingService.getHPointer(dataAckMessage.dataAckPayload.payload);
 
                 // Mark the keysplitting handshake as completed successfully
                 this.keysplittingHandshakeCompleteSubject.next(true);
@@ -334,7 +349,6 @@ export class SsmTunnelWebsocketService
 
     private async sendSynMessage(synMessage: SynMessageWrapper): Promise<void> {
         this.logger.debug('Sending syn message...');
-        this.keySplittingService.setExpectedHPointer(synMessage.synPayload.payload);
         await this.sendWebsocketMessage<SynMessageWrapper>(
             SsmTunnelHubOutgoingMessages.SynMessage,
             synMessage
@@ -343,7 +357,6 @@ export class SsmTunnelWebsocketService
 
     private async sendDataMessage(dataMessage: DataMessageWrapper): Promise<void> {
         this.logger.debug('Sending data message...');
-        this.keySplittingService.setExpectedHPointer(dataMessage.dataPayload.payload);
         await this.sendWebsocketMessage<DataMessageWrapper>(
             SsmTunnelHubOutgoingMessages.DataMessage,
             dataMessage

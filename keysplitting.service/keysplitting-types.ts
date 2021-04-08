@@ -97,6 +97,10 @@ export enum KeysplittingErrorTypes {
     Unknown                     = 'Unknown',
 }
 
+export enum SshTunnelActions {
+    Open = 'ssh/open'
+}
+
 export interface SshOpenActionPayload {
     username: string;
     sshPubKey: string;

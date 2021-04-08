@@ -86,26 +86,8 @@ export class KeySplittingService {
         this.logger.debug('Reset keysplitting service');
     }
 
-    public setExpectedHPointer(message: any): void {
-        // Helper function to set our expected HPointer
-        this.expectedHPointer = this.hashHelper(this.JSONstringifyOrder(message));
-    }
-
-    public setCurrentHPointer(message: any): void {
-        // Helper function to set our current HPointer
-        this.currentHPointer = this.hashHelper(this.JSONstringifyOrder(message));
-    }
-
-    public validateHPointer(hPointer: string): boolean {
-        if (this.expectedHPointer != null)
-            if (this.expectedHPointer.toString('base64') == hPointer) {
-                // Return True
-                return true;
-            } else {
-                // Else they don't equal each other, return False
-                return false;
-            }
-        throw Error('Expected HPointer is not set!');
+    public getHPointer(message: any): string {
+        return this.hashHelper(this.JSONstringifyOrder(message)).toString('base64');
     }
 
     public setTargetPublicKey(targetPublicKey: string): void {
@@ -138,13 +120,13 @@ export class KeySplittingService {
         return Buffer.from(JSON.stringify( obj, allKeys), 'utf8');
     }
 
-    public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload): Promise<DataMessageWrapper> {
+    public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload, hPointer: string): Promise<DataMessageWrapper> {
         // Build our payload
         const dataMessage = {
             payload: {
                 type: 'DATA',
                 action: action,
-                hPointer: this.currentHPointer.toString('base64'),
+                hPointer: hPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
                 payload: this.JSONstringifyOrder(payload).toString('utf8')
