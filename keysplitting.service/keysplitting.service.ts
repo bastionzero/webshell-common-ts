@@ -120,6 +120,16 @@ export class KeySplittingService {
         return Buffer.from(JSON.stringify( obj, allKeys), 'utf8');
     }
 
+    private encodeDataPayload(payload: any) {
+        if(typeof payload === 'string') {
+            return payload;
+        } else if(typeof payload === 'object') {
+            return this.JSONstringifyOrder(payload).toString('utf8');
+        } else {
+            throw new Error(`Unhandled payload type ${typeof payload}`);
+        }
+    }
+
     public async buildDataMessage<TDataPayload>(targetId: string, action: string, currentIdToken: string, payload: TDataPayload, hPointer: string): Promise<DataMessageWrapper> {
         // Build our payload
         const dataMessage = {
@@ -129,7 +139,7 @@ export class KeySplittingService {
                 hPointer: hPointer,
                 targetId: targetId,
                 BZECert: await this.getBZECertHash(currentIdToken),
-                payload: this.JSONstringifyOrder(payload).toString('utf8')
+                payload: this.encodeDataPayload(payload)
             },
             signature: ''
         };

@@ -18,7 +18,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     private outputSubject: BehaviorSubject<string>;
     public outputData: Observable<string>;
 
-    private shellStateSubject: BehaviorSubject<ShellState>;
+    protected shellStateSubject: BehaviorSubject<ShellState>;
     public shellStateData: Observable<ShellState>;
 
     protected abstract handleInput(data: string): Promise<void>;
