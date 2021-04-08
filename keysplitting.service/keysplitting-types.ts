@@ -105,3 +105,14 @@ export interface SshOpenActionPayload {
     username: string;
     sshPubKey: string;
 }
+
+export enum ShellActions {
+    Open = 'shell/open',
+    Input = 'shell/input',
+    Resize = 'shell/resize'
+}
+
+export interface ShellTerminalSizeActionPayload {
+    rows: number;
+    cols: number;
+}
