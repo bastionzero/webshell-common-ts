@@ -96,11 +96,10 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     protected async handleResize(terminalSize: TerminalSize): Promise<void> {
         this.logger.debug(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
 
-        const prevInputMessage = this.sequenceNumber === 0 ? undefined : this.inputMessageBuffer[this.inputMessageBuffer.length - 1];
         const inputPayload: ShellTerminalSizeActionPayload = {
             rows: terminalSize.rows,
             cols: terminalSize.columns
-        }
+        };
 
         // Add to input message buffer
         const shellInput: ShellMessage = {
@@ -289,7 +288,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         }
 
         if (inputMessage != this.currentInputMessage) {
-            this.logger.error(`Data ack is not for not the current input message`);
+            this.logger.error('Data ack is not for not the current input message');
             return;
         }
 
