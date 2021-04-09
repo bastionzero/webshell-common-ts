@@ -45,7 +45,35 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         super(logger, authConfigService, connectionId, inputStream, resizeStream);
     }
 
+    public async start() {
+        await super.start();
+
+        // Make sure keysplitting service is initialized (keys loaded)
+        await this.keySplittingService.init();
+
+        this.websocket.on(ShellHubIncomingMessages.synAck, (synAck) => this.handleSynAck(synAck));
+        this.websocket.on(ShellHubIncomingMessages.dataAck, (dataAck) => this.handleDataAck(dataAck));
+        this.websocket.on(ShellHubIncomingMessages.keysplittingError, (ksError) => this.handleKeysplittingError(ksError));
+
+        await this.websocket.start();
+    }
+
+    public dispose() : void {
+        super.dispose();
+    }
+
+    private resetKeysplittingState() {
+        this.sequenceNumber = 0;
+        this.currentInputMessage = undefined;
+        this.lastAckHPointer = undefined;
+        this.inputMessageBuffer = [];
+        this.outgoingShellInputMessages = {};
+    }
+
     protected async handleShellStart(): Promise<void> {
+        // reset all keysplitting state in case this is a reconnect attempt
+        // after a previous error occurred
+        this.resetKeysplittingState();
         await this.performKeysplittingHandshake();
     }
 
@@ -92,28 +120,11 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         }
     }
 
-    public async start() {
-        await super.start();
-
-        // Make sure keysplitting service is initialized (keys loaded)
-        await this.keySplittingService.init();
-
-        this.websocket.on(ShellHubIncomingMessages.synAck, (synAck) => this.handleSynAck(synAck));
-        this.websocket.on(ShellHubIncomingMessages.dataAck, (dataAck) => this.handleDataAck(dataAck));
-        this.websocket.on(ShellHubIncomingMessages.keysplittingError, (ksError) => this.handleKeysplittingError(ksError));
-
-        await this.websocket.start();
-    }
-
-    public dispose() : void {
-        super.dispose();
-    }
-
     private async performKeysplittingHandshake(): Promise<boolean> {
         if(this.targetInfo.agentVersion === '') {
             throw new Error(`Unable to perform keysplitting handshake: agentVersion is not known for target ${this.targetInfo.id}`);
         }
-        if(this.targetInfo.agentId === '') {
+        if(this.targetInfo.agentId === '' ) {
             throw new Error(`Unknown agentId in sendOpenShellSynMessage for target ${this.targetInfo.id}`);
         }
 
