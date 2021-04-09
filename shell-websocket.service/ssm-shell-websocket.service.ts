@@ -14,6 +14,18 @@ interface ShellMessage {
     seqNum: number;
 }
 
+// TODO: change this after we release keysplitting agent version
+// This is bzero agent version only "3.0.732.15" => 15
+const KeysplittingMinimumAgentVersion = 0;
+export function isAgentKeysplittingReady(agentVersion: string): boolean {
+    try {
+        const version = parseInt(agentVersion.split('.')[3]);
+        return version >= KeysplittingMinimumAgentVersion;
+    } catch(err) {
+        return false;
+    }
+}
+
 const KeysplittingHandshakeTimeout = 15; // in seconds
 
 export class SsmShellWebsocketService extends BaseShellWebsocketService
