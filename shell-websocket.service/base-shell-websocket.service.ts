@@ -1,4 +1,4 @@
-import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { IShellWebsocketService, ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState, TerminalSize } from './shell-websocket.service.types';
 
@@ -133,6 +133,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
                 { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
             )
             .configureLogging(new SignalRLogger(this.logger))
+            .configureLogging(LogLevel.Warning)
             .build();
     }
 
