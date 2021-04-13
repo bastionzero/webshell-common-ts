@@ -45,6 +45,8 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     private inputMessageBuffer: ShellMessage[] = [];
     private outgoingShellInputMessages: { [h: string]: ShellMessage } = {};
 
+    private isActiveClient = false;
+
     constructor(
         private keySplittingService: KeySplittingService,
         private targetInfo: SsmTargetInfo,
@@ -80,6 +82,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.lastAckHPointer = undefined;
         this.inputMessageBuffer = [];
         this.outgoingShellInputMessages = {};
+        this.isActiveClient = false;
     }
 
     protected async handleShellStart(): Promise<void> {
@@ -125,8 +128,15 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     }
 
     private async processInputMessageQueue() {
-        if(! this.currentInputMessage && this.inputMessageBuffer.length > 0) {
+        if (! this.currentInputMessage && this.inputMessageBuffer.length > 0) {
             this.currentInputMessage = this.inputMessageBuffer[0];
+
+            // If another client has attached to the same shell then we must
+            // perform keysplitting handshake in order to send new input
+            if (!this.isActiveClient) {
+                await this.performKeysplittingHandshake();
+            }
+
             await this.sendShellInputDataMessage(this.currentInputMessage);
         }
     }
@@ -142,15 +152,16 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.logger.debug(`Starting keysplitting handshake with ${this.targetInfo.id}`);
         this.logger.debug(`Agent Version ${this.targetInfo.agentVersion}, Agent ID: ${this.targetInfo.agentId}`);
 
-        await this.sendShellOpenSynMessage();
-
-        return new Promise((res, rej) => {
+        return new Promise(async (res, rej) => {
             this.keysplittingHandshakeComplete
                 .pipe(timeout(KeysplittingHandshakeTimeout * 1000))
                 .subscribe(
                     completedSuccessfully => res(completedSuccessfully),
                     _ => rej(`Keyspliting handshake timed out after ${KeysplittingHandshakeTimeout} seconds`)
                 );
+            
+            // start the keysplitting handshake
+            await this.sendShellOpenSynMessage();
         });
     }
 
@@ -182,8 +193,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     private async sendShellInputDataMessage(input: ShellMessage) {
         this.logger.debug(`Sending new input data message. ${JSON.stringify(input)}`);
 
-        const prevHPointer = this.lastAckHPointer ?? this.dataAckShellOpenMessageHPointer;
-        if(! prevHPointer) {
+        if(! this.lastAckHPointer) {
             throw new Error(`prevHPointer is not known for input ${JSON.stringify(input)}`);
         }
 
@@ -192,7 +202,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
             input.inputType,
             await this.authConfigService.getIdToken(),
             input.inputPayload,
-            prevHPointer
+            this.lastAckHPointer
         );
 
         const hPointer = this.keySplittingService.getHPointer(dataMessage.dataPayload.payload);
@@ -221,10 +231,16 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         try {
             this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
 
+            // First handle case where this is a synack message from another
+            // client that has now attached to the shell
+            if (synAckMessage.synAckPayload.payload.clientId != this.keySplittingService.getClientId()) {
+                this.logger.debug('Saw SynAck message from another client. Setting isActiveClient to false.');
+                this.isActiveClient = false;
+                return;
+            }
+
             // Validate our HPointer
             if (synAckMessage.synAckPayload.payload.hPointer !== this.synShellOpenMessageHPointer) {
-                // TODO: if we see a different hpointer synack this probably
-                // means a different client has attached to the underlying shell
                 const errorString = '[SynAck] Error Validating HPointer!';
                 this.logger.error(errorString);
                 throw new Error(errorString);
@@ -241,6 +257,8 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
             }
 
             this.synAckShellOpenMessageHPointer = this.keySplittingService.getHPointer(synAckMessage.synAckPayload.payload);
+            this.lastAckHPointer = this.synAckShellOpenMessageHPointer;
+            this.isActiveClient = true;
 
             await this.sendShellOpenDataMessage();
         } catch(e) {
@@ -251,6 +269,12 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     private async handleDataAck(dataAckMessage: DataAckMessageWrapper) {
         try {
             this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
+
+            // Do not process data ack messages from other clients
+            if (dataAckMessage.dataAckPayload.payload.clientId != this.keySplittingService.getClientId()) {
+                this.logger.debug(`Skipping data ack message with different clientId`);
+                return;
+            }
 
             const action = dataAckMessage.dataAckPayload.payload.action;
             switch(action) {
@@ -285,6 +309,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         }
 
         this.dataAckShellOpenMessageHPointer = this.keySplittingService.getHPointer(dataAckMessage.dataAckPayload.payload);
+        this.lastAckHPointer = this.dataAckShellOpenMessageHPointer;
 
         // Mark the keysplitting handshake as completed successfully
         this.keysplittingHandshakeCompleteSubject.next(true);
