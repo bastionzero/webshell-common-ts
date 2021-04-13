@@ -85,18 +85,19 @@ export interface ErrorMessageWrapper {
 }
 
 export enum KeysplittingErrorTypes {
-    BZECertInvalidIDToken       = 'BZECertInvalidIDToken',
-    BZECertInvalidNonce         = 'BZECertInvalidNonce',
-    BZECertUnrecognized         = 'BZECertUnrecognized',
-    BZECertInvalidProvider      = 'BZECertProviderError',
-    HPointerError               = 'HPointerError',
-    SigningError                = 'SigningError',
-    SignatureVerificationError  = 'SignatureVerificationError',
-    TargetIdInvalid             = 'TargetIdInvalid',
-    HashingError                = 'HashingError',
-    KeysplittingActionError     = 'KeysplittingActionError',
-    InvalidPayload              = 'InvalidPayload',
-    Unknown                     = 'Unknown',
+    BZECertInvalidClientPublicKey   = 'BZECertInvalidClientPublicKey',
+    BZECertInvalidIDToken           = 'BZECertInvalidIDToken',
+    BZECertInvalidNonce             = 'BZECertInvalidNonce',
+    BZECertUnrecognized             = 'BZECertUnrecognized',
+    BZECertInvalidProvider          = 'BZECertProviderError',
+    HPointerError                   = 'HPointerError',
+    SigningError                    = 'SigningError',
+    SignatureVerificationError      = 'SignatureVerificationError',
+    TargetIdInvalid                 = 'TargetIdInvalid',
+    HashingError                    = 'HashingError',
+    KeysplittingActionError         = 'KeysplittingActionError',
+    InvalidPayload                  = 'InvalidPayload',
+    Unknown                         = 'Unknown',
 }
 
 export enum SshTunnelActions {
