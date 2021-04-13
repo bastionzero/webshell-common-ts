@@ -31,7 +31,7 @@ export interface DataMessagePayload extends KeySplittingPayload {
     targetId: string,
     hPointer: string,
     payload: string,
-    BZECert: string
+    BZECertHash: string
 }
 export interface SynAckPayload extends KeySplittingPayload {
     hPointer: string,
