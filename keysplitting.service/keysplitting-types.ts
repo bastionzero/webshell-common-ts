@@ -1,48 +1,50 @@
 export interface SsmTargetInfo {
-    id: string,
+    id: string;
     agentId: string;
     agentVersion: string;
 }
 
 export interface BZECert {
-    initialIdToken: string,
-    currentIdToken: string,
-    clientPublicKey: string,
-    rand: string,
-    signatureOnRand: string
+    initialIdToken: string;
+    currentIdToken: string;
+    clientPublicKey: string;
+    rand: string;
+    signatureOnRand: string;
 }
 
 export interface KeySplittingPayload {
-    type: string,
-    action: string
+    type: string;
+    action: string;
 }
 
 export interface KeySplittingMessage<TPayload> {
-    payload: TPayload,
-    signature: string
+    payload: TPayload;
+    signature: string;
 }
 export interface SynMessagePayload extends KeySplittingPayload {
-    nonce: string,
-    targetId: string,
-    BZECert: BZECert
+    nonce: string;
+    targetId: string;
+    BZECert: BZECert;
 }
 
 export interface DataMessagePayload extends KeySplittingPayload {
-    targetId: string,
-    hPointer: string,
-    payload: string,
-    BZECertHash: string
+    targetId: string;
+    hPointer: string;
+    payload: string;
+    BZECertHash: string;
 }
 export interface SynAckPayload extends KeySplittingPayload {
-    hPointer: string,
-    nonce: string,
-    targetPublicKey: string
+    hPointer: string;
+    nonce: string;
+    targetPublicKey: string;
+    clientId: string;
 }
 
 export interface DataAckPayload extends KeySplittingPayload {
-    hPointer: string,
-    payload: string,
-    targetPublicKey: string
+    hPointer: string;
+    payload: string;
+    targetPublicKey: string;
+    clientId: string;
 }
 
 export interface ErrorPayload {
@@ -63,19 +65,19 @@ export interface DataMessage extends KeySplittingMessage<DataMessagePayload> { }
 export interface ErrorMessage extends KeySplittingMessage<ErrorPayload> { }
 
 export interface SynMessageWrapper {
-    synPayload: SynMessage
+    synPayload: SynMessage;
 }
 
 export interface DataMessageWrapper {
-    dataPayload: DataMessage
+    dataPayload: DataMessage;
 }
 
 export interface DataAckMessageWrapper {
-    dataAckPayload: DataAckMessage
+    dataAckPayload: DataAckMessage;
 }
 
 export interface SynAckMessageWrapper {
-    synAckPayload: SynAckMessage
+    synAckPayload: SynAckMessage;
 }
 
 export interface ErrorMessageWrapper {

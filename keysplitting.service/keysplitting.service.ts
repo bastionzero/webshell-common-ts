@@ -10,36 +10,33 @@ export class KeySplittingService {
     private config: ConfigInterface
     private data: KeySplittingConfigSchema
     private logger: ILogger;
+    private targetPublicKey: ed.Point;
+
     private publicKey: Uint8Array;
     private privateKey: Uint8Array;
-    private expectedHPointer: Buffer;
-    private currentHPointer: Buffer;
-    private targetPublicKey: ed.Point;
+
+    // Hash of the client's public key
+    private clientId: string;
+    public getClientId() { return this.clientId;}
 
     constructor(config: ConfigInterface, logger: ILogger) {
         this.config = config;
         this.logger = logger;
         this.data = this.config.loadKeySplitting();
-
-        // Initially our expected HPointer is null
-        this.expectedHPointer = null;
-        this.currentHPointer = null;
     }
 
     public async init(): Promise<void> {
         // Init function so we can wait on async function calls
         // Load our keys if they are there
         await this.loadKeys();
+
+        this.clientId = this.hashHelper(Buffer.from(this.publicKey)).toString('base64');
     }
 
     public setInitialIdToken(latestIdToken: string): void {
         this.data.initialIdToken = latestIdToken;
         this.config.updateKeySplitting(this.data);
         this.logger.debug('Updated latestIdToken');
-    }
-
-    public getConfig(): KeySplittingConfigSchema {
-        return this.data;
     }
 
     public async getBZECert(currentIdToken: string): Promise<BZECert> {
