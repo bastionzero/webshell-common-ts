@@ -135,7 +135,7 @@ export class KeySplittingService {
                 action: action,
                 hPointer: hPointer,
                 targetId: targetId,
-                BZECertHash: await this.getBZECertHash(currentIdToken),
+                BZECert: await this.getBZECertHash(currentIdToken),
                 payload: this.encodeDataPayload(payload)
             },
             signature: ''
