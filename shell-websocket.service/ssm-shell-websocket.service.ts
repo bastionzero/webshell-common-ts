@@ -131,12 +131,6 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         if (! this.currentInputMessage && this.inputMessageBuffer.length > 0) {
             this.currentInputMessage = this.inputMessageBuffer[0];
 
-            // If another client has attached to the same shell then we must
-            // perform keysplitting handshake in order to send new input
-            if (!this.isActiveClient) {
-                await this.performKeysplittingHandshake();
-            }
-
             await this.sendShellInputDataMessage(this.currentInputMessage);
         }
     }
@@ -159,7 +153,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
                     completedSuccessfully => res(completedSuccessfully),
                     _ => rej(`Keyspliting handshake timed out after ${KeysplittingHandshakeTimeout} seconds`)
                 );
-            
+
             // start the keysplitting handshake
             await this.sendShellOpenSynMessage();
         });
@@ -231,19 +225,15 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         try {
             this.logger.debug(`Received SynAck message: ${JSON.stringify(synAckMessage)}`);
 
-            // First handle case where this is a synack message from another
-            // client that has now attached to the shell
-            if (synAckMessage.synAckPayload.payload.clientId != this.keySplittingService.getClientId()) {
-                this.logger.debug('Saw SynAck message from another client. Setting isActiveClient to false.');
+            // For now we only only a single client to be attached to the shell
+            // at a time so if we see another synack message we dont recognize
+            // immediately disconnect
+            if (synAckMessage.synAckPayload.payload.hPointer != this.synShellOpenMessageHPointer) {
+                this.logger.debug('Saw SynAck message from another client.');
+                this.logger.warn('Another client has attached to this shell...disconnecting.');
                 this.isActiveClient = false;
+                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
                 return;
-            }
-
-            // Validate our HPointer
-            if (synAckMessage.synAckPayload.payload.hPointer !== this.synShellOpenMessageHPointer) {
-                const errorString = '[SynAck] Error Validating HPointer!';
-                this.logger.error(errorString);
-                throw new Error(errorString);
             }
 
             // For out SynAck message we need to set the public key of the target
@@ -270,11 +260,8 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         try {
             this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
 
-            // Do not process data ack messages from other clients
-            if (dataAckMessage.dataAckPayload.payload.clientId != this.keySplittingService.getClientId()) {
-                this.logger.debug(`Skipping data ack message with different clientId`);
-                return;
-            }
+            // Skip processing all data messages if we are not the active client
+            if(! this.isActiveClient) return;
 
             const action = dataAckMessage.dataAckPayload.payload.action;
             switch(action) {
