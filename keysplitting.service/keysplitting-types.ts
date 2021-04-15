@@ -37,14 +37,12 @@ export interface SynAckPayload extends KeySplittingPayload {
     hPointer: string;
     nonce: string;
     targetPublicKey: string;
-    clientId: string;
 }
 
 export interface DataAckPayload extends KeySplittingPayload {
     hPointer: string;
     payload: string;
     targetPublicKey: string;
-    clientId: string;
 }
 
 export interface ErrorPayload {

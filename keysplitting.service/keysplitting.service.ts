@@ -15,10 +15,6 @@ export class KeySplittingService {
     private publicKey: Uint8Array;
     private privateKey: Uint8Array;
 
-    // Hash of the client's public key
-    private clientId: string;
-    public getClientId() { return this.clientId;}
-
     constructor(config: ConfigInterface, logger: ILogger) {
         this.config = config;
         this.logger = logger;
@@ -29,8 +25,6 @@ export class KeySplittingService {
         // Init function so we can wait on async function calls
         // Load our keys if they are there
         await this.loadKeys();
-
-        this.clientId = this.hashHelper(Buffer.from(this.publicKey)).toString('base64');
     }
 
     public setInitialIdToken(latestIdToken: string): void {
