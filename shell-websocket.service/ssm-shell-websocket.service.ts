@@ -47,6 +47,8 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
 
     private isActiveClient = false;
 
+    private currentIdToken: string = undefined;
+
     constructor(
         private keySplittingService: KeySplittingService,
         private targetInfo: SsmTargetInfo,
@@ -160,10 +162,11 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     }
 
     private async sendShellOpenSynMessage() {
+        this.currentIdToken = await this.authConfigService.getIdToken();
         const synMessage = await this.keySplittingService.buildSynMessage(
             this.targetInfo.agentId,
             ShellActions.Open,
-            await this.authConfigService.getIdToken()
+            this.currentIdToken
         );
 
         this.synShellOpenMessageHPointer = this.keySplittingService.getHPointer(synMessage.synPayload.payload);
@@ -171,11 +174,19 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     }
 
     private async sendShellOpenDataMessage() {
+        // Check whether current BZCert's idtoken has been refreshed
+        // If yes we need to perform a new handshake before sending data
+        const IdToken = await this.authConfigService.getIdToken();
+        if (this.currentIdToken !== IdToken){
+            this.logger.debug(`Current idtoken has expired, requesting new and performing new ks handshake`);
+            await this.performKeysplittingHandshake();
+            return;
+        }
         const shellOpenDataPayload = {};
         const dataMessage = await this.keySplittingService.buildDataMessage(
             this.targetInfo.agentId,
             ShellActions.Open,
-            await this.authConfigService.getIdToken(),
+            this.currentIdToken,
             shellOpenDataPayload,
             this.synAckShellOpenMessageHPointer
         );
@@ -185,6 +196,14 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     }
 
     private async sendShellInputDataMessage(input: ShellMessage) {
+        // Check whether current BZCert's idtoken has been refreshed
+        // If yes we need to perform a new handshake before sending data
+        const IdToken = await this.authConfigService.getIdToken();
+        if (this.currentIdToken !== IdToken){
+            this.logger.debug(`Current idtoken has expired, requesting new and performing new ks handshake`);
+            await this.performKeysplittingHandshake();
+        }
+
         this.logger.debug(`Sending new input data message. ${JSON.stringify(input)}`);
 
         if(! this.lastAckHPointer) {
@@ -194,7 +213,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         const dataMessage = await this.keySplittingService.buildDataMessage(
             this.targetInfo.agentId,
             input.inputType,
-            await this.authConfigService.getIdToken(),
+            this.currentIdToken,
             input.inputPayload,
             this.lastAckHPointer
         );
