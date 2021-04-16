@@ -6,7 +6,7 @@ export interface IShellWebsocketService extends IDisposable{
     sendShellConnect(rows: number, cols: number): void;
 
     outputData: Observable<string>;
-    shellStateData: Observable<ShellState>;
+    shellEventData: Observable<ShellEvent>;
 }
 
 export const ShellHubIncomingMessages = {
@@ -32,11 +32,16 @@ export const ShellHubOutgoingMessages = {
     dataMessage: 'DataMessage',
 };
 
-export interface ShellState {
-    start: boolean;
-    disconnect: boolean;
-    delete: boolean;
-    ready: boolean;
+export enum ShellEventType {
+    Start = 'Start',
+    Disconnect = 'Disconnect',
+    Delete = 'Delete',
+    Ready = 'Ready',
+    Unattached = 'Unattach'
+}
+
+export interface ShellEvent {
+    type: ShellEventType;
 }
 
 export interface TerminalSize

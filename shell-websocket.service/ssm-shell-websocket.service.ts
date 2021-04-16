@@ -352,6 +352,6 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.logger.error(`Type: ${errorPayload.errorType}`);
         this.logger.error(`Error Message: ${errorPayload.message}`);
 
-        this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+        this.shellEventSubject.next({ type: ShellEventType.Disconnect});
     }
 }
