@@ -37,4 +37,8 @@ export class SshShellWebsocketService extends BaseShellWebsocketService
     protected async handleResize(terminalSize: TerminalSize): Promise<void> {
         await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellGeometry, terminalSize);
     }
+
+    public shellReattach(): Promise<void> {
+        return;
+    }
 }

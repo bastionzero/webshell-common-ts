@@ -25,6 +25,8 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     protected abstract handleResize(terminalSize: TerminalSize): Promise<void>;
     protected abstract handleShellStart(): Promise<void>;
 
+    public abstract shellReattach() : Promise<void>;
+
     constructor(
         protected logger: ILogger,
         protected authConfigService: AuthConfigService,
@@ -61,7 +63,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
 
             try {
                 await this.handleShellStart();
-                this.shellEventSubject.next({ type: ShellEventType.Start })
+                this.shellEventSubject.next({ type: ShellEventType.Start });
             } catch(err) {
                 this.logger.error(err);
                 this.shellEventSubject.next({ type: ShellEventType.Disconnect });

@@ -4,6 +4,7 @@ import { IDisposable } from '../utility/disposable';
 export interface IShellWebsocketService extends IDisposable{
     start() : Promise<void>;
     sendShellConnect(rows: number, cols: number): void;
+    shellReattach() : Promise<void>;
 
     outputData: Observable<string>;
     shellEventData: Observable<ShellEvent>;

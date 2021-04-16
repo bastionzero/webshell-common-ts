@@ -1,6 +1,6 @@
 import { Observable, Subject } from 'rxjs';
 import { timeout } from 'rxjs/operators';
-import { ShellHubIncomingMessages, ShellHubOutgoingMessages, TerminalSize } from './shell-websocket.service.types';
+import { ShellEventType, ShellHubIncomingMessages, ShellHubOutgoingMessages, TerminalSize } from './shell-websocket.service.types';
 import { BaseShellWebsocketService } from './base-shell-websocket.service';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -87,6 +87,16 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.isActiveClient = false;
     }
 
+    public async shellReattach(): Promise<void> {
+        if(this.isActiveClient) {
+            this.logger.warn('Cannot reattach shell already the active client');
+            return;
+        }
+
+        this.resetKeysplittingState();
+        await this.performKeysplittingHandshake();
+    }
+
     protected async handleShellStart(): Promise<void> {
         // reset all keysplitting state in case this is a reconnect attempt
         // after a previous error occurred
@@ -96,6 +106,12 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
 
     protected async handleInput(data: string): Promise<void> {
         this.logger.debug(`got new input ${data}`);
+
+        // Skip new input messages if we are not the active client
+        if(! this.isActiveClient) {
+            this.logger.debug(`[handleInput] received when not active client...skipping.`);
+            return;
+        }
 
         const inputPayload = data;
 
@@ -112,6 +128,12 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
 
     protected async handleResize(terminalSize: TerminalSize): Promise<void> {
         this.logger.debug(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
+
+        // Skip new resize messages if we are not the active client
+        if(! this.isActiveClient) {
+            this.logger.debug(`[handleResize] received when not active client...skipping.`);
+            return;
+        }
 
         const inputPayload: ShellTerminalSizeActionPayload = {
             rows: terminalSize.rows,
@@ -248,10 +270,9 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
             // at a time so if we see another synack message we dont recognize
             // immediately disconnect
             if (synAckMessage.synAckPayload.payload.hPointer != this.synShellOpenMessageHPointer) {
-                this.logger.debug('Saw SynAck message from another client.');
-                this.logger.warn('Another client has attached to this shell...disconnecting.');
+                this.logger.debug('[SynAck] received message from another client.');
                 this.isActiveClient = false;
-                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+                this.shellEventSubject.next({ type: ShellEventType.Unattached});
                 return;
             }
 
@@ -279,8 +300,11 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         try {
             this.logger.debug(`Received DataAck message: ${JSON.stringify(dataAckMessage)}`);
 
-            // Skip processing all data messages if we are not the active client
-            if(! this.isActiveClient) return;
+            // Skip processing all data ack messages if we are not the active client
+            if(! this.isActiveClient) {
+                this.logger.debug(`[DataAck] received when not active client...skipping.`);
+                return;
+            }
 
             const action = dataAckMessage.dataAckPayload.payload.action;
             switch(action) {
