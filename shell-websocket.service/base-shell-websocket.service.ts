@@ -1,6 +1,6 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
-import { IShellWebsocketService, ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellState, TerminalSize } from './shell-websocket.service.types';
+import { IShellWebsocketService, ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellEvent, TerminalSize, ShellEventType } from './shell-websocket.service.types';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
 import { ILogger } from '../logging/logging.types';
@@ -18,8 +18,8 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     private outputSubject: BehaviorSubject<string>;
     public outputData: Observable<string>;
 
-    protected shellStateSubject: BehaviorSubject<ShellState>;
-    public shellStateData: Observable<ShellState>;
+    protected shellEventSubject: Subject<ShellEvent>;
+    public shellEventData: Observable<ShellEvent>;
 
     protected abstract handleInput(data: string): Promise<void>;
     protected abstract handleResize(terminalSize: TerminalSize): Promise<void>;
@@ -35,8 +35,8 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     {
         this.outputSubject = new BehaviorSubject<string>('');
         this.outputData = this.outputSubject.asObservable();
-        this.shellStateSubject = new BehaviorSubject<ShellState>({start: false, disconnect: false, delete: false, ready: false});
-        this.shellStateData = this.shellStateSubject.asObservable();
+        this.shellEventSubject = new Subject<ShellEvent>();
+        this.shellEventData = this.shellEventSubject.asObservable();
 
         this.connectionId = connectionId;
         this.inputSubscription = inputStream.asObservable().subscribe((data) => this.handleInput(data));
@@ -61,10 +61,10 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
 
             try {
                 await this.handleShellStart();
-                this.shellStateSubject.next({start: true, disconnect: false, delete: false, ready: false});
+                this.shellEventSubject.next({ type: ShellEventType.Start })
             } catch(err) {
                 this.logger.error(err);
-                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+                this.shellEventSubject.next({ type: ShellEventType.Disconnect });
             }
         });
 
@@ -72,7 +72,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
             ShellHubIncomingMessages.shellDisconnect,
             () => {
                 this.logger.trace('got shellDisconnect message');
-                this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+                this.shellEventSubject.next({ type: ShellEventType.Disconnect });
             }
         );
 
@@ -81,7 +81,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
             ShellHubIncomingMessages.shellDelete,
             () => {
                 this.logger.trace('got shellDelete message');
-                this.shellStateSubject.next({start: false, disconnect: true, delete: true, ready: false});
+                this.shellEventSubject.next({ type: ShellEventType.Delete });
             }
         );
 
@@ -89,14 +89,14 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
             ShellHubIncomingMessages.connectionReady,
             _ => {
                 this.logger.trace('got connectionReady message');
-                this.shellStateSubject.next({start: false, disconnect: false, delete: false, ready: true});
+                this.shellEventSubject.next({ type: ShellEventType.Ready });
             }
         );
 
         // this is called if the server closes the websocket
         this.websocket.onclose(() => {
             this.logger.debug('websocket closed by server');
-            this.shellStateSubject.next({start: false, disconnect: true, delete: false, ready: false});
+            this.shellEventSubject.next({ type: ShellEventType.Disconnect });
         });
     }
 
@@ -110,7 +110,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         this.destroyConnection();
         this.inputSubscription.unsubscribe();
         this.resizeSubscription.unsubscribe();
-        this.shellStateSubject.complete();
+        this.shellEventSubject.complete();
     }
 
     protected async sendWebsocketMessage<TReq>(methodName: string, message: TReq): Promise<void> {
