@@ -84,6 +84,7 @@ export interface ErrorMessageWrapper {
 
 export enum KeysplittingErrorTypes {
     BZECertInvalidClientPublicKey   = 'BZECertInvalidClientPublicKey',
+    BZECertExpired                  = 'BZECertExpired',
     BZECertInvalidIDToken           = 'BZECertInvalidIDToken',
     BZECertInvalidNonce             = 'BZECertInvalidNonce',
     BZECertUnrecognized             = 'BZECertUnrecognized',
