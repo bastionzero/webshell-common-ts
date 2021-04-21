@@ -14,9 +14,9 @@ interface ShellMessage {
     seqNum: number;
 }
 
-// TODO: change this after we release keysplitting agent version
-// This is bzero agent version only "3.0.732.15" => 15
-const KeysplittingMinimumAgentVersion = 0;
+// bzero-agent version >= 3.0.732.16 is keysplitting compatible for interactive shells
+const KeysplittingMinimumAgentVersion = 16;
+
 export function isAgentKeysplittingReady(agentVersion: string): boolean {
     try {
         const version = parseInt(agentVersion.split('.')[3]);
