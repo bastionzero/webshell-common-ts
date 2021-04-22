@@ -127,7 +127,6 @@ export class ShellWebsocketService implements IDisposable
     public async createConnection(): Promise<HubConnection> {
         // connectionId is related to terminal session
         // sessionId is for user authentication
-        console.log("I AM USED2")
         const queryString = `?connectionId=${this.connectionId}&session_id=${this.authConfigService.getSessionId()}`;
 
         const connectionUrl = `${this.authConfigService.getServiceUrl()}hub/ssh/${queryString}`;
