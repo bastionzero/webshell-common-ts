@@ -287,12 +287,12 @@ export class SsmTunnelWebsocketService
 
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder
-        .withUrl(
-            connectionUrl,
-            { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
-        )
-        .configureLogging(new SignalRLogger(this.logger))
-        .withAutomaticReconnect();
+            .withUrl(
+                connectionUrl,
+                { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
+            )
+            .configureLogging(new SignalRLogger(this.logger))
+            .withAutomaticReconnect();
         return connectionBuilder.build();
     }
 

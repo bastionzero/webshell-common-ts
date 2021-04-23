@@ -133,12 +133,12 @@ export class ShellWebsocketService implements IDisposable
 
         const connectionBuilder = new HubConnectionBuilder();
         connectionBuilder
-        .withUrl(
-            connectionUrl,
-            { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
-        )
-        .configureLogging(6) // log level 6 is no websocket logs
-        .withAutomaticReconnect();
+            .withUrl(
+                connectionUrl,
+                { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
+            )
+            .configureLogging(6) // log level 6 is no websocket logs
+            .withAutomaticReconnect();
         return connectionBuilder.build();
     }
 
