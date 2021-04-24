@@ -291,8 +291,7 @@ export class SsmTunnelWebsocketService
                 connectionUrl,
                 { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
             )
-            .configureLogging(new SignalRLogger(this.logger))
-            .withAutomaticReconnect();
+            .configureLogging(new SignalRLogger(this.logger));
         return connectionBuilder.build();
     }
 
