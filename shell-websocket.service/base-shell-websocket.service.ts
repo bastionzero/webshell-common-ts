@@ -1,5 +1,5 @@
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import { IShellWebsocketService, ShellHubIncomingMessages, ShellHubOutgoingMessages, ShellEvent, TerminalSize, ShellEventType } from './shell-websocket.service.types';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
@@ -15,7 +15,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     private resizeSubscription: Subscription;
 
     // Output Observables
-    private outputSubject: BehaviorSubject<string>;
+    private outputSubject: Subject<string>;
     public outputData: Observable<string>;
 
     protected shellEventSubject: Subject<ShellEvent>;
@@ -35,7 +35,7 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         resizeStream: Subject<TerminalSize>
     )
     {
-        this.outputSubject = new BehaviorSubject<string>('');
+        this.outputSubject = new Subject<string>();
         this.outputData = this.outputSubject.asObservable();
         this.shellEventSubject = new Subject<ShellEvent>();
         this.shellEventData = this.shellEventSubject.asObservable();
