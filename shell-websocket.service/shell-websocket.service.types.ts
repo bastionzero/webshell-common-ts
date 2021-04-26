@@ -3,7 +3,12 @@ import { IDisposable } from '../utility/disposable';
 
 export interface IShellWebsocketService extends IDisposable{
     start() : Promise<void>;
+
+    // Terminal dimensions provided in the shell connect are only used by ssh
+    // and non-keysplitting ssm shells where terminal size is set from the
+    // backend. Keysplitting ssm shells must send a separate resize input event
     sendShellConnect(rows: number, cols: number): void;
+
     shellReattach() : Promise<void>;
 
     outputData: Observable<string>;
