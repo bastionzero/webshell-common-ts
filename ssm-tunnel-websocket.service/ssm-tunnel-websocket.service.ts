@@ -111,6 +111,13 @@ export class SsmTunnelWebsocketService
         }
     }
 
+    public async closeConnection(): Promise<void> {
+        if(this.websocket) {
+            await this.websocket.stop();
+            this.websocket = undefined;
+        }
+    }
+
     // This will send the pubkey through the bastion's AddSshPubKey websocket
     // method which uses RunCommand to add the ssh pubkey to the target's
     // authorized_keys file. This code path should ultimately be removed once
@@ -189,18 +196,12 @@ export class SsmTunnelWebsocketService
         await this.sendDataMessage(dataMessage);
     }
 
-    private async closeConnection() {
-        if(this.websocket) {
-            await this.websocket.stop();
-            this.websocket = undefined;
-        }
-    }
-
     private async setupWebsocket() {
         await this.startWebsocket();
 
         this.websocket.onclose((error) => {
-            this.handleError(`Websocket was closed by server: ${error}`);
+            if (error)
+                this.handleError(`Websocket was closed by server: ${error}`);
         });
 
         // Set up ReceiveData handler
