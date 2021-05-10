@@ -22,8 +22,8 @@ export class SshShellWebsocketService extends BaseShellWebsocketService
         await this.websocket.start();
     }
 
-    public dispose() : void {
-        super.dispose();
+    public async dispose() : Promise<void> {
+        await super.dispose();
     }
 
     protected async handleShellStart(): Promise<void> {

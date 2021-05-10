@@ -74,8 +74,8 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         await this.websocket.start();
     }
 
-    public dispose() : void {
-        super.dispose();
+    public async dispose() : Promise<void> {
+        await super.dispose();
     }
 
     private resetKeysplittingState() {

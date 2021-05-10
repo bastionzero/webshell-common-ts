@@ -3,3 +3,8 @@ export interface IDisposable
 {
     dispose() : void;
 }
+
+export interface IDisposableAsync
+{
+    dispose() : Promise<void>;
+}

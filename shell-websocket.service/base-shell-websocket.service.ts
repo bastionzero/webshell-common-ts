@@ -107,9 +107,9 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols });
     }
 
-    public dispose() : void
+    public async dispose() : Promise<void>
     {
-        this.destroyConnection();
+        await this.destroyConnection();
         this.inputSubscription.unsubscribe();
         this.resizeSubscription.unsubscribe();
         this.shellEventSubject.complete();
@@ -140,9 +140,9 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
             .build();
     }
 
-    private destroyConnection() {
+    private async destroyConnection() {
         if(this.websocket) {
-            this.websocket.stop(); // maybe await on this for server not to complain
+            await this.websocket.stop();
             this.websocket = undefined;
         }
     }

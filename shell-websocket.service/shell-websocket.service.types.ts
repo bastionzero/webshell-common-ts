@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
-import { IDisposable } from '../utility/disposable';
+import { IDisposableAsync } from '../utility/disposable';
 
-export interface IShellWebsocketService extends IDisposable{
+export interface IShellWebsocketService extends IDisposableAsync{
     start() : Promise<void>;
 
     // Terminal dimensions provided in the shell connect are only used by ssh
