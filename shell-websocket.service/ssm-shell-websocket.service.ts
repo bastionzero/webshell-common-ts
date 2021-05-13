@@ -6,7 +6,7 @@ import { BaseShellWebsocketService } from './base-shell-websocket.service';
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
 import { ILogger } from '../logging/logging.types';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
-import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper } from '../keysplitting.service/keysplitting-types';
+import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper, KeysplittingErrorTypes } from '../keysplitting.service/keysplitting-types';
 
 interface ShellMessage {
     inputType: ShellActions,
@@ -26,7 +26,7 @@ export function isAgentKeysplittingReady(agentVersion: string): boolean {
     }
 }
 
-const KeysplittingHandshakeTimeout = 15; // in seconds
+const KeysplittingHandshakeTimeout = 25; // in seconds
 
 export class SsmShellWebsocketService extends BaseShellWebsocketService
 {
@@ -376,6 +376,18 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.logger.error(`Type: ${errorPayload.errorType}`);
         this.logger.error(`Error Message: ${errorPayload.message}`);
 
-        this.shellEventSubject.next({ type: ShellEventType.Disconnect});
+        switch(errorPayload.errorType) {
+            case KeysplittingErrorTypes.Unknown:
+                // If there is an unknown error on a shell resize, then the pty isn't ready -> resend
+                if (this.currentInputMessage.inputType == ShellActions.Resize) {
+                    setTimeout(async () => {
+                        this.inputMessageBuffer.push(this.currentInputMessage);
+                        await this.processInputMessageQueue();  
+                    }, 2000);
+                }
+                break;
+            default:
+                this.shellEventSubject.next({ type: ShellEventType.Disconnect});
+        }
     }
 }
