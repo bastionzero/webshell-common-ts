@@ -26,7 +26,7 @@ export function isAgentKeysplittingReady(agentVersion: string): boolean {
     }
 }
 
-const KeysplittingHandshakeTimeout = 25; // in seconds
+const KeysplittingHandshakeTimeout = 45; // in seconds
 
 export class SsmShellWebsocketService extends BaseShellWebsocketService
 {
@@ -377,14 +377,10 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.logger.error(`Error Message: ${errorPayload.message}`);
 
         switch(errorPayload.errorType) {
-            case KeysplittingErrorTypes.Unknown:
-                // If there is an unknown error on a shell resize, then the pty isn't ready -> resend
-                if (this.currentInputMessage.inputType == ShellActions.Resize) {
-                    setTimeout(async () => {
-                        this.inputMessageBuffer.push(this.currentInputMessage);
-                        await this.processInputMessageQueue();  
-                    }, 2000);
-                }
+            case KeysplittingErrorTypes.HandlerNotReady:
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                this.currentInputMessage = undefined;
+                await this.processInputMessageQueue();
                 break;
             default:
                 this.shellEventSubject.next({ type: ShellEventType.Disconnect});
