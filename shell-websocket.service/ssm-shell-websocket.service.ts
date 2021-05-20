@@ -377,13 +377,13 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.logger.error(`Error Message: ${errorPayload.message}`);
 
         switch(errorPayload.errorType) {
-            case KeysplittingErrorTypes.HandlerNotReady:
-                await new Promise(resolve => setTimeout(resolve, 1000))
-                this.currentInputMessage = undefined;
-                await this.processInputMessageQueue();
-                break;
-            default:
-                this.shellEventSubject.next({ type: ShellEventType.Disconnect});
+        case KeysplittingErrorTypes.HandlerNotReady:
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            this.currentInputMessage = undefined;
+            await this.processInputMessageQueue();
+            break;
+        default:
+            this.shellEventSubject.next({ type: ShellEventType.Disconnect});
         }
     }
 }

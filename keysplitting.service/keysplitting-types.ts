@@ -101,8 +101,8 @@ export enum KeysplittingErrorTypes {
 	Unknown                      = 'Unknown',
 	ChannelClosed                = 'ChannelClosed',
 	OutdatedHPointer             = 'OutdatedHPointer',
-    BZECertExpiredInitialIdToken = "BZECertExpiredInitialIdToken",
-    HandlerNotReady              = "HandlerNotReady"
+    BZECertExpiredInitialIdToken = 'BZECertExpiredInitialIdToken',
+    HandlerNotReady              = 'HandlerNotReady'
 }
 
 export enum SshTunnelActions {
