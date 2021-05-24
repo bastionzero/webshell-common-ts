@@ -18,6 +18,9 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     private outputSubject: Subject<string>;
     public outputData: Observable<string>;
 
+    private replaySubject: Subject<string>;
+    public replayData: Observable<string>;
+
     protected shellEventSubject: Subject<ShellEvent>;
     public shellEventData: Observable<ShellEvent>;
 
@@ -37,6 +40,8 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     {
         this.outputSubject = new Subject<string>();
         this.outputData = this.outputSubject.asObservable();
+        this.replaySubject = new Subject<string>();
+        this.replayData = this.replaySubject.asObservable();
         this.shellEventSubject = new Subject<ShellEvent>();
         this.shellEventData = this.shellEventSubject.asObservable();
 
@@ -48,6 +53,14 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
     public async start()
     {
         this.websocket = await this.createConnection();
+
+        this.websocket.on(
+            ShellHubIncomingMessages.shellReplay,
+            req =>
+            {
+                this.replaySubject.next(req.data);
+            }
+        );
 
         this.websocket.on(
             ShellHubIncomingMessages.shellOutput,
@@ -102,9 +115,14 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         });
     }
 
-    public async sendShellConnect(rows: number, cols: number)
+    public async sendShellConnect(rows: number, cols: number, version: number)
     {
-        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols });
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols, Version: version });
+    }
+
+    public async sendReplayDone(rows: number, cols: number)
+    {
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.replayDone, { TerminalRows: rows, TerminalColumns: cols});
     }
 
     public async dispose() : Promise<void>
