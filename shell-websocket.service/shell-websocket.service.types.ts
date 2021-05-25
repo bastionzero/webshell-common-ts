@@ -7,7 +7,7 @@ export interface IShellWebsocketService extends IDisposableAsync{
     // Terminal dimensions provided in the shell connect are only used by ssh
     // and non-keysplitting ssm shells where terminal size is set from the
     // backend. Keysplitting ssm shells must send a separate resize input event
-    sendShellConnect(rows: number, cols: number, version: number): void;
+    sendShellConnect(rows: number, cols: number, replayOutput: boolean): void;
 
     sendReplayDone(rows: number, cols: number): void;
 

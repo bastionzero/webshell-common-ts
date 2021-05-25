@@ -115,9 +115,9 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         });
     }
 
-    public async sendShellConnect(rows: number, cols: number, version: number)
+    public async sendShellConnect(rows: number, cols: number, replayOutput: boolean)
     {
-        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols, Version: version });
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols, ReplayOutput: replayOutput });
     }
 
     public async sendReplayDone(rows: number, cols: number)
