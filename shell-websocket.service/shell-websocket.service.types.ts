@@ -48,7 +48,8 @@ export enum ShellEventType {
     Disconnect = 'Disconnect',
     Delete = 'Delete',
     Ready = 'Ready',
-    Unattached = 'Unattach'
+    Unattached = 'Unattached',
+    BrokenWebsocket = 'BrokenWebsocket'
 }
 
 export interface ShellEvent {

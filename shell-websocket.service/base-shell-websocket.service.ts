@@ -113,6 +113,14 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
             this.logger.debug('websocket closed by server');
             this.shellEventSubject.next({ type: ShellEventType.Disconnect });
         });
+
+        this.websocket.onreconnecting(_ => {
+            this.shellEventSubject.next({ type: ShellEventType.BrokenWebsocket });
+        });
+
+        this.websocket.onreconnected(_ => {
+            this.logger.debug('Websocket reconnected');
+        });
     }
 
     public async sendShellConnect(rows: number, cols: number, replayOutput: boolean)
@@ -152,8 +160,8 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
                 connectionUrl,
                 { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
             )
+            .withAutomaticReconnect([100, 1000, 10000, 30000, 60000]) // retry times in ms
             .configureLogging(new SignalRLogger(this.logger))
-            .withAutomaticReconnect()
             .configureLogging(LogLevel.Warning)
             .build();
     }
