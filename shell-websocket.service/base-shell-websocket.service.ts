@@ -153,7 +153,11 @@ export abstract class BaseShellWebsocketService implements IShellWebsocketServic
         // sessionId is for user authentication
         const queryString = `?connectionId=${this.connectionId}&session_id=${this.authConfigService.getSessionId()}`;
 
-        const connectionUrl = `${this.authConfigService.getServiceUrl()}hub/ssh/${queryString}`;
+        // Construct custom connection url based on service url
+        let bastionUrl = new URL(this.authConfigService.getServiceUrl());
+        let connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/';
+
+        const connectionUrl = `${connectionServiceUrl}hub/shell/${queryString}`;
 
         return new HubConnectionBuilder()
             .withUrl(
