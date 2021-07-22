@@ -1,14 +1,15 @@
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, Subscription } from 'rxjs';
 import * as ed from 'noble-ed25519';
 import { timeout } from 'rxjs/operators';
-import { ShellEventType, ShellHubIncomingMessages, ShellHubOutgoingMessages, TerminalSize } from './shell-websocket.service.types';
-import { BaseShellWebsocketService } from './base-shell-websocket.service';
+import { ShellEvent, ShellEventType, ShellHubIncomingMessages, ShellHubOutgoingMessages, TerminalSize } from './shell-websocket.service.types';
 
 import { AuthConfigService } from '../auth-config-service/auth-config.service';
 import { ILogger } from '../logging/logging.types';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper, KeysplittingErrorTypes } from '../keysplitting.service/keysplitting-types';
 import Utils from 'webshell-common-ts/utility/utils';
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { SignalRLogger } from 'webshell-common-ts/logging/signalr-logger';
 
 interface ShellMessage {
     inputType: ShellActions,
@@ -25,8 +26,24 @@ export function isAgentKeysplittingReady(agentVersion: string): boolean {
 
 const KeysplittingHandshakeTimeout = 45; // in seconds
 
-export class SsmShellWebsocketService extends BaseShellWebsocketService
+export class ShellWebsocketService
 {
+    private websocket : HubConnection;
+
+    // Input subscriptions
+    private inputSubscription: Subscription;
+    private resizeSubscription: Subscription;
+
+    // Output Observables
+    private outputSubject: Subject<string>;
+    public outputData: Observable<string>;
+
+    private replaySubject: Subject<string>;
+    public replayData: Observable<string>;
+
+    private shellEventSubject: Subject<ShellEvent>;
+    public shellEventData: Observable<ShellEvent>;
+
     private keysplittingHandshakeCompleteSubject = new Subject<boolean>();
     private keysplittingHandshakeComplete: Observable<boolean> = this.keysplittingHandshakeCompleteSubject.asObservable();
 
@@ -50,17 +67,98 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
     constructor(
         private keySplittingService: KeySplittingService,
         private targetInfo: SsmTargetInfo,
-        protected logger: ILogger,
-        protected authConfigService: AuthConfigService,
-        protected connectionId: string,
+        private logger: ILogger,
+        private authConfigService: AuthConfigService,
+        private connectionId: string,
+        private connectionNodeId: string,
+        private connectionNodeAuthToken: string,
         inputStream: Subject<string>,
         resizeStream: Subject<TerminalSize>
     ) {
-        super(logger, authConfigService, connectionId, inputStream, resizeStream);
+            this.outputSubject = new Subject<string>();
+            this.outputData = this.outputSubject.asObservable();
+            this.replaySubject = new Subject<string>();
+            this.replayData = this.replaySubject.asObservable();
+            this.shellEventSubject = new Subject<ShellEvent>();
+            this.shellEventData = this.shellEventSubject.asObservable();
+    
+            this.connectionId = connectionId;
+            this.inputSubscription = inputStream.asObservable().subscribe((data) => this.handleInput(data));
+            this.resizeSubscription = resizeStream.asObservable().subscribe((data) => this.handleResize(data));
     }
 
-    public async start() {
-        await super.start();
+
+    public async start()
+    {
+        this.websocket = await this.createConnection();
+
+        this.websocket.on(
+            ShellHubIncomingMessages.shellReplay,
+            req =>
+            {
+                this.replaySubject.next(req.data);
+            }
+        );
+
+        this.websocket.on(
+            ShellHubIncomingMessages.shellOutput,
+            req =>
+            {
+                // ref: https://git.coolaj86.com/coolaj86/atob.js/src/branch/master/node-atob.js
+                this.outputSubject.next(req.data);
+            }
+        );
+
+        this.websocket.on(ShellHubIncomingMessages.shellStart, async () => {
+            this.logger.trace('got shellStart message');
+
+            try {
+                await this.handleShellStart();
+                this.shellEventSubject.next({ type: ShellEventType.Start });
+            } catch(err) {
+                this.logger.error(err);
+                this.shellEventSubject.next({ type: ShellEventType.Disconnect });
+            }
+        });
+
+        this.websocket.on(
+            ShellHubIncomingMessages.shellDisconnect,
+            () => {
+                this.logger.trace('got shellDisconnect message');
+                this.shellEventSubject.next({ type: ShellEventType.Disconnect });
+            }
+        );
+
+        // If a connection was closed via API/UI then we will see a shellDelete message
+        this.websocket.on(
+            ShellHubIncomingMessages.shellDelete,
+            () => {
+                this.logger.trace('got shellDelete message');
+                this.shellEventSubject.next({ type: ShellEventType.Delete });
+            }
+        );
+
+        this.websocket.on(
+            ShellHubIncomingMessages.connectionReady,
+            _ => {
+                this.logger.trace('got connectionReady message');
+                this.shellEventSubject.next({ type: ShellEventType.Ready });
+            }
+        );
+
+        // this is called if the server closes the websocket
+        this.websocket.onclose(() => {
+            this.logger.debug('websocket closed by server');
+            this.shellEventSubject.next({ type: ShellEventType.Disconnect });
+        });
+
+        this.websocket.onreconnecting(_ => {
+            this.shellEventSubject.next({ type: ShellEventType.BrokenWebsocket });
+        });
+
+        this.websocket.onreconnected(_ => {
+            this.logger.debug('Websocket reconnected');
+        });
 
         // Make sure keysplitting service is initialized (keys loaded)
         await this.keySplittingService.init();
@@ -68,12 +166,62 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         this.websocket.on(ShellHubIncomingMessages.synAck, (synAck) => this.handleSynAck(synAck));
         this.websocket.on(ShellHubIncomingMessages.dataAck, (dataAck) => this.handleDataAck(dataAck));
         this.websocket.on(ShellHubIncomingMessages.keysplittingError, (ksError) => this.handleKeysplittingError(ksError));
-
+        
+        // Finally start the websocket connection
         await this.websocket.start();
     }
 
-    public async dispose() : Promise<void> {
-        await super.dispose();
+    public async sendShellConnect(rows: number, cols: number, replayOutput: boolean)
+    {
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.shellConnect, { TerminalRows: rows, TerminalColumns: cols, ReplayOutput: replayOutput });
+    }
+
+    public async sendReplayDone(rows: number, cols: number)
+    {
+        await this.sendWebsocketMessage(ShellHubOutgoingMessages.replayDone, { TerminalRows: rows, TerminalColumns: cols});
+    }
+
+    public async dispose() : Promise<void>
+    {
+        await this.destroyConnection();
+        this.inputSubscription.unsubscribe();
+        this.resizeSubscription.unsubscribe();
+        this.shellEventSubject.complete();
+    }
+
+    private async sendWebsocketMessage<TReq>(methodName: string, message: TReq): Promise<void> {
+        if(this.websocket === undefined || this.websocket.state == HubConnectionState.Disconnected)
+            throw new Error('Hub disconnected');
+
+        await this.websocket.invoke(methodName, message);
+    }
+
+    private async createConnection(): Promise<HubConnection> {
+        // connectionId is related to terminal session
+        // connectionNodeAuthToken is used to authenticate the connection
+        const queryString = `?connectionId=${this.connectionId}&authToken=${this.connectionNodeAuthToken}`;
+
+        // Construct custom connection url based on service url
+        let bastionUrl = new URL(this.authConfigService.getServiceUrl());
+        let connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/';
+
+        const connectionUrl = `${connectionServiceUrl}hub/shell/${queryString}`;
+
+        return new HubConnectionBuilder()
+            .withUrl(
+                connectionUrl,
+                { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
+            )
+            .withAutomaticReconnect([100, 1000, 10000, 30000, 60000]) // retry times in ms
+            .configureLogging(new SignalRLogger(this.logger))
+            .build();
+    }
+
+    private async destroyConnection() {
+        if(this.websocket) {
+            await this.websocket.stop();
+            this.websocket = undefined;
+        }
     }
 
     private resetKeysplittingState() {
@@ -95,14 +243,14 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         await this.performKeysplittingHandshake();
     }
 
-    protected async handleShellStart(): Promise<void> {
+    private async handleShellStart(): Promise<void> {
         // reset all keysplitting state in case this is a reconnect attempt
         // after a previous error occurred
         this.resetKeysplittingState();
         await this.performKeysplittingHandshake();
     }
 
-    protected async handleInput(data: string): Promise<void> {
+    private async handleInput(data: string): Promise<void> {
         this.logger.debug(`got new input ${data}`);
 
         // Skip new input messages if we are not the active client
@@ -124,7 +272,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         await this.processInputMessageQueue();
     }
 
-    protected async handleResize(terminalSize: TerminalSize): Promise<void> {
+    private async handleResize(terminalSize: TerminalSize): Promise<void> {
         this.logger.debug(`New terminal resize event (rows: ${terminalSize.rows} cols: ${terminalSize.columns})`);
 
         // Skip new resize messages if we are not the active client
@@ -220,7 +368,7 @@ export class SsmShellWebsocketService extends BaseShellWebsocketService
         // If yes we need to perform a new handshake before sending data
         const IdToken = await this.authConfigService.getIdToken();
         if (this.currentIdToken !== IdToken){
-            this.logger.debug(`Current idtoken has expired, requesting new and performing new ks handshake`);
+            this.logger.debug(`Current id token has expired, requesting new and performing new ks handshake`);
             await this.performKeysplittingHandshake();
         }
 
