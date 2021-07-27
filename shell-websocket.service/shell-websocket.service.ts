@@ -203,7 +203,7 @@ export class ShellWebsocketService
 
         // Construct custom connection url based on service url
         let bastionUrl = new URL(this.authConfigService.getServiceUrl());
-        let connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/';
+        let connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/' + this.connectionNodeId + "/";
 
         const connectionUrl = `${connectionServiceUrl}hub/shell/${queryString}`;
 
