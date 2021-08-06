@@ -5,7 +5,7 @@ import * as CryptoJS from 'crypto-js';
 import { ILogger } from '../logging/logging.types';
 import { ConfigInterface, KeySplittingConfigSchema } from './keysplitting.service.types';
 import { BZECert, DataMessageWrapper, SynMessageWrapper, KeySplittingMessage, SynMessagePayload, DataMessagePayload } from './keysplitting-types';
-import Utils from 'webshell-common-ts/utility/utils';
+import Utils from '../utility/utils';
 
 export class KeySplittingService {
     private config: ConfigInterface

@@ -7,9 +7,9 @@ import { AuthConfigService } from '../auth-config-service/auth-config.service';
 import { ILogger } from '../logging/logging.types';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper, KeysplittingErrorTypes } from '../keysplitting.service/keysplitting-types';
-import Utils from 'webshell-common-ts/utility/utils';
+import Utils from '../utility/utils';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
-import { SignalRLogger } from 'webshell-common-ts/logging/signalr-logger';
+import { SignalRLogger } from '../logging/signalr-logger';
 
 interface ShellMessage {
     inputType: ShellActions,
