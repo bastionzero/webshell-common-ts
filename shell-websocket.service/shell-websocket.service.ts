@@ -87,6 +87,9 @@ export class ShellWebsocketService
             this.resizeSubscription = resizeStream.asObservable().subscribe((data) => this.handleResize(data));
     }
 
+    public updateTargetInfo(targetInfo: SsmTargetInfo) {
+        this.targetInfo = targetInfo;
+    }
 
     public async start()
     {
