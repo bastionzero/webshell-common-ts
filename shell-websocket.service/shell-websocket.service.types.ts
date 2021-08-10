@@ -1,8 +1,11 @@
 import { Observable } from 'rxjs';
+import { SsmTargetInfo } from '../keysplitting.service/keysplitting-types';
 import { IDisposableAsync } from '../utility/disposable';
 
 export interface IShellWebsocketService extends IDisposableAsync{
     start() : Promise<void>;
+
+    updateTargetInfo(targetInfo: SsmTargetInfo): void;
 
     // Terminal dimensions provided in the shell connect are only used for the
     // virtual terminal emulator for command extraction. Keysplitting shells
