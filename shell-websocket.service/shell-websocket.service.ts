@@ -8,7 +8,7 @@ import { ILogger } from '../logging/logging.types';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper, KeysplittingErrorTypes } from '../keysplitting.service/keysplitting-types';
 import Utils from '../utility/utils';
-import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { SignalRLogger } from '../logging/signalr-logger';
 
 interface ShellMessage {
@@ -75,16 +75,16 @@ export class ShellWebsocketService
         inputStream: Subject<string>,
         resizeStream: Subject<TerminalSize>
     ) {
-            this.outputSubject = new Subject<string>();
-            this.outputData = this.outputSubject.asObservable();
-            this.replaySubject = new Subject<string>();
-            this.replayData = this.replaySubject.asObservable();
-            this.shellEventSubject = new Subject<ShellEvent>();
-            this.shellEventData = this.shellEventSubject.asObservable();
-    
-            this.connectionId = connectionId;
-            this.inputSubscription = inputStream.asObservable().subscribe((data) => this.handleInput(data));
-            this.resizeSubscription = resizeStream.asObservable().subscribe((data) => this.handleResize(data));
+        this.outputSubject = new Subject<string>();
+        this.outputData = this.outputSubject.asObservable();
+        this.replaySubject = new Subject<string>();
+        this.replayData = this.replaySubject.asObservable();
+        this.shellEventSubject = new Subject<ShellEvent>();
+        this.shellEventData = this.shellEventSubject.asObservable();
+
+        this.connectionId = connectionId;
+        this.inputSubscription = inputStream.asObservable().subscribe((data) => this.handleInput(data));
+        this.resizeSubscription = resizeStream.asObservable().subscribe((data) => this.handleResize(data));
     }
 
     public updateTargetInfo(targetInfo: SsmTargetInfo) {
@@ -169,7 +169,7 @@ export class ShellWebsocketService
         this.websocket.on(ShellHubIncomingMessages.synAck, (synAck) => this.handleSynAck(synAck));
         this.websocket.on(ShellHubIncomingMessages.dataAck, (dataAck) => this.handleDataAck(dataAck));
         this.websocket.on(ShellHubIncomingMessages.keysplittingError, (ksError) => this.handleKeysplittingError(ksError));
-        
+
         // Finally start the websocket connection
         await this.websocket.start();
     }
@@ -205,8 +205,8 @@ export class ShellWebsocketService
         const queryString = `?connectionId=${this.connectionId}&authToken=${this.connectionNodeAuthToken}`;
 
         // Construct custom connection url based on service url
-        let bastionUrl = new URL(this.authConfigService.getServiceUrl());
-        let connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/' + this.connectionNodeId + "/";
+        const bastionUrl = new URL(this.authConfigService.getServiceUrl());
+        const connectionServiceUrl = bastionUrl.href.split('.bastionzero.com')[0] + '-connect.bastionzero.com/' + this.connectionNodeId + '/';
 
         const connectionUrl = `${connectionServiceUrl}hub/shell/${queryString}`;
 
