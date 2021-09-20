@@ -8,7 +8,7 @@ import { ILogger } from '../logging/logging.types';
 import { KeySplittingService } from '../keysplitting.service/keysplitting.service';
 import { DataAckMessageWrapper, DataAckPayload, DataMessageWrapper, ErrorMessageWrapper, ShellActions, ShellTerminalSizeActionPayload, SsmTargetInfo, SynAckMessageWrapper, SynAckPayload, SynMessageWrapper, KeysplittingErrorTypes } from '../keysplitting.service/keysplitting-types';
 import Utils from '../utility/utils';
-import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { SignalRLogger } from '../logging/signalr-logger';
 
 interface ShellMessage {
@@ -216,7 +216,7 @@ export class ShellWebsocketService
                 { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
             )
             .withAutomaticReconnect([100, 1000, 10000, 30000, 60000]) // retry times in ms
-            .configureLogging(new SignalRLogger(this.logger))
+            .configureLogging(new SignalRLogger(this.logger, LogLevel.Warning))
             .build();
     }
 

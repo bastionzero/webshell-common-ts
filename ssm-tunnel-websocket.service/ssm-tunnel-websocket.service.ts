@@ -2,7 +2,7 @@ import SshPK from 'sshpk';
 import * as ed from 'noble-ed25519';
 import { Observable, Subject } from 'rxjs';
 import { timeout } from 'rxjs/operators';
-import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
+import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 
 import { KeySplittingService } from '../../webshell-common-ts/keysplitting.service/keysplitting.service';
 import { AddSshPubKeyMessage, HUB_RECEIVE_MAX_SIZE, SsmTunnelHubIncomingMessages, SsmTunnelHubOutgoingMessages, StartTunnelMessage, TunnelDataMessage, WebsocketResponse } from './ssm-tunnel-websocket.types';
@@ -310,7 +310,7 @@ export class SsmTunnelWebsocketService
                 connectionUrl,
                 { accessTokenFactory: async () => await this.authConfigService.getIdToken()}
             )
-            .configureLogging(new SignalRLogger(this.logger));
+            .configureLogging(new SignalRLogger(this.logger, LogLevel.Warning));
         return connectionBuilder.build();
     }
 

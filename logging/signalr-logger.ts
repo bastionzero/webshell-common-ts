@@ -5,12 +5,17 @@ import { LogLevel } from '@microsoft/signalr';
 export class SignalRLogger implements signalR.ILogger
 {
     private logger: ILogger;
+    private logLevelFilter: signalR.LogLevel; // Everything below this level will be ignored
 
-    constructor(logger: ILogger) {
+    constructor(logger: ILogger, logLevelFilter: signalR.LogLevel) {
         this.logger = logger;
+        this.logLevelFilter = logLevelFilter;
     }
 
     log(logLevel: signalR.LogLevel, message: string): void {
+        if(logLevel < this.logLevelFilter || this.logLevelFilter == LogLevel.None)
+            return;
+
         switch(logLevel) {
         case LogLevel.Trace:
             this.logger.trace(message);
